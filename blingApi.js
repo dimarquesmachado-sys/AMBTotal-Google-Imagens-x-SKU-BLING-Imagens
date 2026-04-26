@@ -69,6 +69,7 @@ async function buscarProdutoCompleto(idProduto) {
 
 // ------------------------------------------------------------
 // Atualiza imagens externas de um produto (SUBSTITUIR)
+// Estrutura correta no Bling V3: midia.imagens.externas
 // ------------------------------------------------------------
 async function atualizarImagens(idProduto, urls) {
   console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs ===`);
@@ -77,51 +78,56 @@ async function atualizarImagens(idProduto, urls) {
   const produto = await buscarProdutoCompleto(idProduto);
   if (!produto) throw new Error(`Produto ${idProduto} nao encontrado no Bling`);
 
-  const externasAntes = (produto.imagens && produto.imagens.externas) || [];
-  const internasAntes = (produto.imagens && produto.imagens.internas) || [];
-  console.log(`[Bling] Produto: id=${produto.id}, nome="${produto.nome}", codigo="${produto.codigo}"`);
-  console.log(`[Bling] Imagens ANTES: externas=${externasAntes.length}, internas=${internasAntes.length}`);
-  console.log(`[Bling] Campos do produto: ${Object.keys(produto).join(', ')}`);
+  const midiaAtual = produto.midia || {};
+  const imagensAtual = midiaAtual.imagens || {};
+  const externasAntes = imagensAtual.externas || [];
+  const internasAntes = imagensAtual.internas || [];
 
-  if (produto.imagens) {
-    console.log(`[Bling] Estrutura imagens.externas exemplo:`, JSON.stringify((produto.imagens.externas || [])[0] || null));
+  console.log(`[Bling] Produto: id=${produto.id}, nome="${produto.nome}", codigo="${produto.codigo}"`);
+  console.log(`[Bling] Imagens ANTES (em midia.imagens): externas=${externasAntes.length}, internas=${internasAntes.length}`);
+  console.log(`[Bling] Campos de midia atual: ${Object.keys(midiaAtual).join(', ') || '(vazio)'}`);
+  if (externasAntes.length > 0) {
+    console.log(`[Bling] Estrutura externa[0] atual:`, JSON.stringify(externasAntes[0]));
   }
 
-  // 2) Monta novo body com imagens substituidas
+  // 2) Monta novo body usando estrutura CORRETA: midia.imagens.externas
   const externasNovas = (urls || []).map(link => ({ link }));
   const novoBody = {
     ...produto,
-    imagens: {
-      externas: externasNovas,
-      internas: internasAntes  // mantem internas intactas
+    midia: {
+      ...midiaAtual,             // preserva video e outros campos de midia
+      imagens: {
+        externas: externasNovas,
+        internas: internasAntes  // preserva internas
+      }
     }
   };
 
-  // 3) Remove campos que costumam dar problema no PUT
+  // 3) Remove apenas o id (nao pode estar no body do PUT)
   delete novoBody.id;
-  delete novoBody.midia;
 
-  console.log(`[Bling] PUT body keys: ${Object.keys(novoBody).join(', ')}`);
-  console.log(`[Bling] PUT body.imagens.externas (primeiras 3):`, JSON.stringify(novoBody.imagens.externas.slice(0, 3)));
+  console.log(`[Bling] PUT body.midia keys: ${Object.keys(novoBody.midia).join(', ')}`);
+  console.log(`[Bling] PUT body.midia.imagens.externas (primeiras 3):`, JSON.stringify(novoBody.midia.imagens.externas.slice(0, 3)));
 
   // 4) Faz PUT
   const resultadoPut = await chamarBling('PUT', `/produtos/${idProduto}`, novoBody);
-  console.log(`[Bling] PUT retorno:`, resultadoPut === null ? 'null (corpo vazio)' : JSON.stringify(resultadoPut).slice(0, 300));
+  console.log(`[Bling] PUT retorno:`, resultadoPut === null ? 'null' : JSON.stringify(resultadoPut).slice(0, 300));
 
-  // 5) VERIFICA pos-PUT que realmente atualizou (faz GET de novo)
+  // 5) VERIFICA pos-PUT
   const verif = await buscarProdutoCompleto(idProduto);
-  const externasDepois = (verif && verif.imagens && verif.imagens.externas) || [];
-  console.log(`[Bling] Imagens DEPOIS: externas=${externasDepois.length}`);
+  const verifMidia = (verif && verif.midia) || {};
+  const verifImagens = verifMidia.imagens || {};
+  const externasDepois = verifImagens.externas || [];
+
+  console.log(`[Bling] Imagens DEPOIS (em midia.imagens): externas=${externasDepois.length}`);
   if (externasDepois.length > 0) {
-    console.log(`[Bling] Primeira imagem externa apos PUT:`, JSON.stringify(externasDepois[0]));
+    console.log(`[Bling] Primeira externa apos PUT:`, JSON.stringify(externasDepois[0]));
   }
 
   if (externasDepois.length !== urls.length) {
-    // PUT retornou OK mas Bling nao atualizou - bug silencioso
     throw new Error(
       `Bling aceitou o PUT mas nao atualizou as imagens. ` +
-      `Esperado: ${urls.length} externas, atual: ${externasDepois.length}. ` +
-      `Pode ser config do Bling (Imagens Internas vs Externas) ou problema no body.`
+      `Esperado: ${urls.length} externas, atual: ${externasDepois.length}.`
     );
   }
 
