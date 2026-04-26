@@ -127,17 +127,18 @@ async function atualizarImagens(idProduto, urls) {
   console.log(`[Bling] Video atual:`, JSON.stringify(videoAtual));
 
   // 2) Monta novo midia (estrutura EXATA do schema oficial)
+  // IMPORTANTE: video.url e obrigatorio no schema quando midia e incluido
+  // Mesmo vazio, precisa ser enviado (string vazia, nao null nem omitido)
   const externasNovas = (urls || []).map(link => ({ link }));
   const novaMidia = {
+    video: {
+      url: (videoAtual && typeof videoAtual.url === 'string') ? videoAtual.url : ''
+    },
     imagens: {
       externas: externasNovas
       // NAO inclui "internas" - schema PUT nao aceita
     }
   };
-  // Se o produto ja tem video.url, mantem
-  if (videoAtual && videoAtual.url) {
-    novaMidia.video = { url: videoAtual.url };
-  }
 
   // 3) Monta body usando WHITELIST (so campos aceitos pelo schema PUT)
   const novoBody = {};
