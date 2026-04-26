@@ -4,23 +4,6 @@ const BLING_API = 'https://api.bling.com.br/Api/v3';
 const MAX_TENTATIVAS_5XX = 3;
 
 // ------------------------------------------------------------
-// WHITELIST de campos aceitos no PUT /produtos/{id}
-// (baseado no schema oficial bling-erp-api-js v5.8 - IUpdateBody)
-// Campos que o GET retorna mas o PUT NAO aceita estao removidos
-// ------------------------------------------------------------
-const CAMPOS_PUT_PERMITIDOS = [
-  'nome', 'codigo', 'preco', 'tipo', 'situacao', 'formato',
-  'descricaoCurta', 'dataValidade', 'unidade',
-  'pesoLiquido', 'pesoBruto', 'volumes', 'itensPorCaixa',
-  'gtin', 'gtinEmbalagem', 'tipoProducao', 'condicao',
-  'freteGratis', 'marca', 'descricaoComplementar', 'linkExterno', 'observacoes',
-  'categoria', 'estoque', 'actionEstoque', 'dimensoes', 'tributacao',
-  'midia', 'linhaProduto', 'estrutura', 'camposCustomizados', 'variacoes'
-];
-// Campos que o GET retorna mas PUT NAO aceita (causam rejeicao silenciosa):
-// - id, descricaoEmbalagemDiscreta, fornecedor, artigoPerigoso
-
-// ------------------------------------------------------------
 // Helper: faz request ao Bling com auto-renovacao de token
 // e retry em caso de instabilidade (5xx) do Bling
 // ------------------------------------------------------------
@@ -104,64 +87,40 @@ async function buscarProdutoCompleto(idProduto) {
 }
 
 // ------------------------------------------------------------
-// Atualiza imagens externas de um produto
-// Estrutura correta no Bling V3 (schema oficial):
-// midia.imagens.externas[{ link }]
-// midia.video.url (opcional, mantem se existir)
+// Atualiza imagens externas de um produto usando PATCH
+// PATCH permite atualizar APENAS os campos enviados
+// (sem precisar mandar o produto inteiro)
 // ------------------------------------------------------------
 async function atualizarImagens(idProduto, urls) {
-  console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs ===`);
+  console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs (PATCH) ===`);
 
-  // 1) Busca produto completo
-  const produto = await buscarProdutoCompleto(idProduto);
-  if (!produto) throw new Error(`Produto ${idProduto} nao encontrado no Bling`);
+  // 1) Estado antes (so pra log e verificacao)
+  const produtoAntes = await buscarProdutoCompleto(idProduto);
+  if (!produtoAntes) throw new Error(`Produto ${idProduto} nao encontrado no Bling`);
 
-  const midiaAtual = produto.midia || {};
-  const imagensAtual = midiaAtual.imagens || {};
-  const externasAntes = imagensAtual.externas || [];
-  const internasAntes = imagensAtual.internas || [];
-  const videoAtual = midiaAtual.video || null;
+  const externasAntes = ((produtoAntes.midia || {}).imagens || {}).externas || [];
+  const internasAntes = ((produtoAntes.midia || {}).imagens || {}).internas || [];
 
-  console.log(`[Bling] Produto: id=${produto.id}, nome="${produto.nome}", codigo="${produto.codigo}"`);
+  console.log(`[Bling] Produto: id=${produtoAntes.id}, nome="${produtoAntes.nome}", codigo="${produtoAntes.codigo}"`);
   console.log(`[Bling] Imagens ANTES: externas=${externasAntes.length}, internas=${internasAntes.length}`);
-  console.log(`[Bling] Video atual:`, JSON.stringify(videoAtual));
 
-  // 2) Monta novo midia (estrutura EXATA do schema oficial)
-  // IMPORTANTE: video.url e obrigatorio no schema quando midia e incluido
-  // Mesmo vazio, precisa ser enviado (string vazia, nao null nem omitido)
+  // 2) Body MINIMO - so o que precisa ser alterado
   const externasNovas = (urls || []).map(link => ({ link }));
-  const novaMidia = {
-    video: {
-      url: (videoAtual && typeof videoAtual.url === 'string') ? videoAtual.url : ''
-    },
-    imagens: {
-      externas: externasNovas
-      // NAO inclui "internas" - schema PUT nao aceita
+  const bodyPatch = {
+    midia: {
+      imagens: {
+        externas: externasNovas
+      }
     }
   };
 
-  // 3) Monta body usando WHITELIST (so campos aceitos pelo schema PUT)
-  const novoBody = {};
-  for (const campo of CAMPOS_PUT_PERMITIDOS) {
-    if (produto[campo] !== undefined && produto[campo] !== null) {
-      novoBody[campo] = produto[campo];
-    }
-  }
-  // Sobrescreve midia com a nova estrutura
-  novoBody.midia = novaMidia;
-  // variacoes obrigatoria no schema - garante que existe (array vazio se nao tiver)
-  if (!Array.isArray(novoBody.variacoes)) {
-    novoBody.variacoes = [];
-  }
+  console.log(`[Bling] PATCH body:`, JSON.stringify(bodyPatch).slice(0, 600));
 
-  console.log(`[Bling] PUT body keys: ${Object.keys(novoBody).join(', ')}`);
-  console.log(`[Bling] PUT body.midia:`, JSON.stringify(novaMidia).slice(0, 500));
+  // 3) Faz PATCH
+  const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
+  console.log(`[Bling] PATCH retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
 
-  // 4) Faz PUT
-  const resultadoPut = await chamarBling('PUT', `/produtos/${idProduto}`, novoBody);
-  console.log(`[Bling] PUT retorno:`, resultadoPut === null ? 'null' : JSON.stringify(resultadoPut).slice(0, 300));
-
-  // 5) Verifica pos-PUT
+  // 4) Verifica
   const verif = await buscarProdutoCompleto(idProduto);
   const verifMidia = (verif && verif.midia) || {};
   const verifImagens = verifMidia.imagens || {};
@@ -169,12 +128,12 @@ async function atualizarImagens(idProduto, urls) {
 
   console.log(`[Bling] Imagens DEPOIS: externas=${externasDepois.length}`);
   if (externasDepois.length > 0) {
-    console.log(`[Bling] Primeira externa apos PUT:`, JSON.stringify(externasDepois[0]));
+    console.log(`[Bling] Primeira externa apos PATCH:`, JSON.stringify(externasDepois[0]));
   }
 
   if (externasDepois.length !== urls.length) {
     throw new Error(
-      `Bling aceitou o PUT mas nao atualizou as imagens. ` +
+      `Bling aceitou o PATCH mas nao atualizou as imagens. ` +
       `Esperado: ${urls.length} externas, atual: ${externasDepois.length}.`
     );
   }
@@ -186,7 +145,7 @@ async function atualizarImagens(idProduto, urls) {
     qtdExternas: externasNovas.length,
     qtdInternasMantidas: internasAntes.length,
     qtdExternasConfirmadas: externasDepois.length,
-    retornoBling: resultadoPut
+    retornoBling: resultadoPatch
   };
 }
 
