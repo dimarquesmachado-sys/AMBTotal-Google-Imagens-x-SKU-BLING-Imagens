@@ -234,7 +234,7 @@ app.post('/api/processar-e-enviar', async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// /api/debug-produto/:codigo - util pra debug
+// /api/debug-produto/:codigo - retorna produto COMPLETO
 // ------------------------------------------------------------
 app.get('/api/debug-produto/:codigo', async (req, res) => {
   try {
@@ -248,7 +248,7 @@ app.get('/api/debug-produto/:codigo', async (req, res) => {
       id: resumo.id,
       codigo: resumo.codigo,
       nome: resumo.nome,
-      midia: completo ? completo.midia : null,
+      produtoCompleto: completo,
       camposDoProduto: completo ? Object.keys(completo) : []
     });
   } catch (e) {
