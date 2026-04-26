@@ -24,35 +24,74 @@
       background: #1d72b8; color: white; border: none;
       padding: 8px 16px; border-radius: 5px; cursor: pointer;
       text-decoration: none; display: inline-block; font-size: 14px;
+      transition: background 0.15s;
     }
     .btn:hover { background: #14538a; }
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
     .btn-sec { background: #6c757d; }
-    .btn-sec:hover { background: #545b62; }
+    .btn-sec:hover:not(:disabled) { background: #545b62; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .toolbar input[type="text"] {
+      flex: 1; min-width: 220px; padding: 8px 12px; font-size: 14px;
+      border: 1px solid #ccc; border-radius: 5px;
+    }
+    .toolbar input[type="text"]:focus { outline: none; border-color: #1d72b8; }
+    .info { font-size: 13px; color: #666; margin-left: auto; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #eee; }
-    th { background: #f0f0f5; font-weight: 600; font-size: 14px; }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f0f0f5; font-weight: 600; font-size: 13px; }
+    tr.selected { background: #e8f4fd; }
     tr:hover { background: #fafbfc; }
+    tr.selected:hover { background: #d6ebfa; }
+    td .acoes { display: flex; gap: 6px; }
+    .checkbox-col { width: 36px; text-align: center; }
+    .acoes-col { width: 110px; }
+    .num-col { width: 100px; text-align: center; }
     .loading, .vazio { text-align: center; padding: 40px; color: #999; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 12px; font-weight: 600;
+    }
     .badge-ok { background: #d4edda; color: #155724; }
     .badge-err { background: #f8d7da; color: #721c24; }
     .badge-warn { background: #fff3cd; color: #856404; }
-    .acoes { margin-top: 10px; }
+    .badge-cinza { background: #e9ecef; color: #6c757d; }
+    .acoes { margin-top: 12px; }
+    @media (max-width: 600px) {
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .toolbar input[type="text"] { width: 100%; }
+      .info { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
   <h1>AMB Imagens Auto</h1>
-  <div class="sub">Sincroniza imagens do Google Drive para produtos no Bling • Fase 1: visualização</div>
+  <div class="sub">Sincroniza imagens do Google Drive para produtos no Bling</div>
 
+  <!-- Card de status -->
   <div class="card">
     <div id="status">
       <div class="loading">Carregando status...</div>
     </div>
     <div class="acoes">
-      <button class="btn" onclick="carregarTudo()">🔄 Atualizar</button>
+      <button class="btn btn-sec" onclick="recarregarPastas()">🔄 Recarregar pastas do Drive</button>
     </div>
   </div>
 
+  <!-- Card de toolbar -->
+  <div class="card">
+    <div class="toolbar">
+      <input type="text" id="busca" placeholder="🔎 Buscar SKU..." oninput="filtrar()">
+      <button class="btn" id="btnVerifSel" onclick="verificarSelecionados()" disabled>
+        Verificar selecionados (<span id="qtdSel">0</span>)
+      </button>
+      <button class="btn btn-sec" onclick="verificarTodos()">Verificar todos</button>
+      <span class="info" id="info">Carregando...</span>
+    </div>
+  </div>
+
+  <!-- Tabela -->
   <div class="card" style="padding: 0; overflow: hidden;">
     <div id="lista">
       <div class="loading">Aguardando...</div>
@@ -60,6 +99,13 @@
   </div>
 
   <script>
+    // Estado global
+    let pastas = []; // [{ sku, pastaId, qtdImagens, bling }]
+    let selecionados = new Set();
+
+    // ---------------------------------------------------
+    // Carregamento inicial
+    // ---------------------------------------------------
     async function carregarStatus() {
       const div = document.getElementById('status');
       try {
@@ -84,65 +130,215 @@
       }
     }
 
-    async function carregarPastas() {
+    async function recarregarPastas() {
       const div = document.getElementById('lista');
+      const info = document.getElementById('info');
       div.innerHTML = '<div class="loading">Carregando pastas do Drive...</div>';
+      info.textContent = 'Carregando...';
+      selecionados.clear();
+      atualizarBotaoSel();
+
       try {
         const r = await fetch('/api/pastas');
         const d = await r.json();
         if (d.erro) {
           div.innerHTML = `<div class="vazio err">Erro: ${d.erro}</div>`;
+          info.textContent = '';
           return;
         }
-        if (!d.pastas || d.pastas.length === 0) {
-          div.innerHTML = `<div class="vazio">Nenhuma pasta de SKU encontrada na pasta-mãe.<br>Crie uma subpasta com o nome do SKU e jogue as imagens dentro.</div>`;
-          return;
-        }
-        let html = `
-          <table>
-            <thead>
-              <tr>
-                <th>SKU (pasta)</th>
-                <th>Imagens no Drive</th>
-                <th>Produto no Bling</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-        d.pastas.forEach(p => {
-          let blingTxt = '';
-          if (!p.bling || p.bling.erro) {
-            blingTxt = `<span class="badge badge-warn">⚠ ${p.bling?.erro || 'sem dados'}</span>`;
-          } else if (!p.bling.encontrado) {
-            blingTxt = `<span class="badge badge-err">❌ não encontrado</span>`;
-          } else {
-            blingTxt = `<span class="badge badge-ok">✅ ID ${p.bling.id}</span> <span style="color: #666; font-size: 13px;">${p.bling.nome || ''}</span>`;
-          }
-          html += `
-            <tr>
-              <td><strong>${p.sku}</strong></td>
-              <td>${p.qtdImagens}</td>
-              <td>${blingTxt}</td>
-            </tr>
-          `;
-        });
-        html += '</tbody></table>';
-        div.innerHTML = html;
+        pastas = (d.pastas || []).map(p => ({ ...p, bling: null })); // bling: null = não verificado
+        info.textContent = `${pastas.length} pasta(s) no Drive`;
+        renderizar();
       } catch (e) {
         div.innerHTML = `<div class="vazio err">Erro: ${e.message}</div>`;
+        info.textContent = '';
       }
     }
 
-    async function carregarTudo() {
+    // ---------------------------------------------------
+    // Renderização da tabela
+    // ---------------------------------------------------
+    function renderizar() {
+      const div = document.getElementById('lista');
+      const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
+      const filtradas = termo
+        ? pastas.filter(p => p.sku.toLowerCase().includes(termo))
+        : pastas;
+
+      if (pastas.length === 0) {
+        div.innerHTML = `<div class="vazio">Nenhuma pasta de SKU encontrada na pasta-mãe.<br>Crie uma subpasta com o nome do SKU e jogue as imagens dentro.</div>`;
+        return;
+      }
+      if (filtradas.length === 0) {
+        div.innerHTML = `<div class="vazio">Nenhum SKU corresponde a "${termo}".</div>`;
+        return;
+      }
+
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th class="checkbox-col"><input type="checkbox" id="selAll" onclick="toggleAll(this)"></th>
+              <th>SKU (pasta)</th>
+              <th class="num-col">Imagens no Drive</th>
+              <th>Produto no Bling</th>
+              <th class="acoes-col"></th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      filtradas.forEach(p => {
+        const sel = selecionados.has(p.sku);
+        const blingTxt = renderBling(p.bling);
+        html += `
+          <tr class="${sel ? 'selected' : ''}">
+            <td class="checkbox-col">
+              <input type="checkbox" ${sel ? 'checked' : ''} onclick="toggleSel('${escapeAttr(p.sku)}', this.checked)">
+            </td>
+            <td><strong>${escapeHtml(p.sku)}</strong></td>
+            <td class="num-col">${p.qtdImagens}</td>
+            <td>${blingTxt}</td>
+            <td class="acoes-col">
+              <button class="btn btn-sm" onclick="verificarUm('${escapeAttr(p.sku)}', this)">Verificar</button>
+            </td>
+          </tr>
+        `;
+      });
+      html += '</tbody></table>';
+      div.innerHTML = html;
+    }
+
+    function renderBling(b) {
+      if (b === null || b === undefined) {
+        return `<span class="badge badge-cinza">⏳ não verificado</span>`;
+      }
+      if (b.erro) {
+        return `<span class="badge badge-warn">⚠ ${escapeHtml(b.erro)}</span>`;
+      }
+      if (!b.encontrado) {
+        return `<span class="badge badge-err">❌ não encontrado</span>`;
+      }
+      return `<span class="badge badge-ok">✅ ID ${b.id}</span> <span style="color: #666; font-size: 13px;">${escapeHtml(b.nome || '')}</span>`;
+    }
+
+    // ---------------------------------------------------
+    // Filtro / Busca
+    // ---------------------------------------------------
+    function filtrar() {
+      renderizar();
+    }
+
+    // ---------------------------------------------------
+    // Seleção
+    // ---------------------------------------------------
+    function toggleSel(sku, checked) {
+      if (checked) selecionados.add(sku);
+      else selecionados.delete(sku);
+      atualizarBotaoSel();
+      renderizar();
+    }
+
+    function toggleAll(checkbox) {
+      const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
+      const filtradas = termo
+        ? pastas.filter(p => p.sku.toLowerCase().includes(termo))
+        : pastas;
+
+      if (checkbox.checked) {
+        filtradas.forEach(p => selecionados.add(p.sku));
+      } else {
+        filtradas.forEach(p => selecionados.delete(p.sku));
+      }
+      atualizarBotaoSel();
+      renderizar();
+    }
+
+    function atualizarBotaoSel() {
+      document.getElementById('qtdSel').textContent = selecionados.size;
+      document.getElementById('btnVerifSel').disabled = selecionados.size === 0;
+    }
+
+    // ---------------------------------------------------
+    // Verificação no Bling
+    // ---------------------------------------------------
+    async function verificarSkus(skus, btnEl) {
+      if (!skus || skus.length === 0) return;
+      const btnOriginal = btnEl ? btnEl.textContent : null;
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = 'Verificando...';
+      }
+      try {
+        const r = await fetch('/api/verificar-bling', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ skus })
+        });
+        const d = await r.json();
+        if (d.erro) {
+          alert('Erro: ' + d.erro);
+          return;
+        }
+        // Atualiza estado local
+        for (const sku of skus) {
+          const p = pastas.find(x => x.sku === sku);
+          if (p) p.bling = d.resultados[sku] || { erro: 'sem retorno' };
+        }
+        renderizar();
+      } catch (e) {
+        alert('Erro: ' + e.message);
+      } finally {
+        if (btnEl && btnOriginal) {
+          btnEl.disabled = false;
+          btnEl.textContent = btnOriginal;
+        }
+      }
+    }
+
+    function verificarUm(sku, btnEl) {
+      verificarSkus([sku], btnEl);
+    }
+
+    function verificarSelecionados() {
+      const skus = Array.from(selecionados);
+      const btn = document.getElementById('btnVerifSel');
+      verificarSkus(skus, btn).then(() => atualizarBotaoSel());
+    }
+
+    function verificarTodos() {
+      const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
+      const skus = (termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas).map(p => p.sku);
+      if (skus.length === 0) { alert('Nenhum SKU para verificar'); return; }
+      if (skus.length > 50) {
+        if (!confirm(`Vai verificar ${skus.length} SKUs no Bling. Pode demorar uns segundos. Continuar?`)) return;
+      }
+      verificarSkus(skus);
+    }
+
+    // ---------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function escapeAttr(s) {
+      return String(s == null ? '' : s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // ---------------------------------------------------
+    // Boot
+    // ---------------------------------------------------
+    (async () => {
       const s = await carregarStatus();
       if (s.drive) {
-        await carregarPastas();
+        await recarregarPastas();
       } else {
         document.getElementById('lista').innerHTML = `<div class="vazio">Configure o Drive nas variáveis de ambiente do Render primeiro.</div>`;
+        document.getElementById('info').textContent = '';
       }
-    }
-
-    carregarTudo();
+    })();
   </script>
 </body>
 </html>
