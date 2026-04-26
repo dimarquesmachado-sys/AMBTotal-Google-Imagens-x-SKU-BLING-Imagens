@@ -103,7 +103,7 @@ async function buscarProdutoCompleto(idProduto) {
 // Bling tem limite de 3 req/s - usa delay entre chamadas
 // ------------------------------------------------------------
 async function atualizarImagens(idProduto, urls) {
-  console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs (PATCH MINIMAL) ===`);
+  console.log(`[Bling] atualizarImagens id=${idProduto}, ${urls.length} URLs`);
 
   // 1) Estado antes (so pra log e verificacao)
   const produtoAntes = await buscarProdutoCompleto(idProduto);
@@ -111,9 +111,6 @@ async function atualizarImagens(idProduto, urls) {
 
   const externasAntes = ((produtoAntes.midia || {}).imagens || {}).externas || [];
   const internasAntes = ((produtoAntes.midia || {}).imagens || {}).internas || [];
-
-  console.log(`[Bling] Produto: id=${produtoAntes.id}, nome="${produtoAntes.nome}", codigo="${produtoAntes.codigo}", preco=${produtoAntes.preco}`);
-  console.log(`[Bling] Imagens ANTES: externas=${externasAntes.length}, internas=${internasAntes.length}`);
 
   // delay para nao estourar 3 req/s do Bling
   await new Promise(r => setTimeout(r, 400));
@@ -134,9 +131,6 @@ async function atualizarImagens(idProduto, urls) {
   const externasComPadding = [...externasNovas];
   while (externasComPadding.length < tamanhoAtual) {
     externasComPadding.push({ link: '' });
-  }
-  if (externasComPadding.length > externasNovas.length) {
-    console.log(`[Bling] Padding aplicado: ${externasNovas.length} URLs reais + ${externasComPadding.length - externasNovas.length} vazias = ${externasComPadding.length} total (para sobrescrever as ${tamanhoAtual} existentes)`);
   }
 
   const bodyPatch = {
@@ -160,15 +154,10 @@ async function atualizarImagens(idProduto, urls) {
       })),
       excluir: false
     };
-    console.log(`[Bling] Produto KIT detectado (formato=E). Preservando estrutura com ${bodyPatch.estrutura.componentes.length} componentes.`);
   }
-
-  console.log(`[Bling] PATCH body keys: ${Object.keys(bodyPatch).join(', ')}`);
-  console.log(`[Bling] PATCH body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
 
   // 3) Faz PATCH unico com padding
   const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
-  console.log(`[Bling] PATCH retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
 
   // delay antes da verificacao
   await new Promise(r => setTimeout(r, 400));
@@ -179,11 +168,6 @@ async function atualizarImagens(idProduto, urls) {
   const verifImagens = verifMidia.imagens || {};
   const externasDepois = verifImagens.externas || [];
 
-  console.log(`[Bling] Imagens DEPOIS: externas=${externasDepois.length}`);
-  if (externasDepois.length > 0) {
-    console.log(`[Bling] Primeira externa apos PATCH:`, JSON.stringify(externasDepois[0]));
-  }
-
   if (externasDepois.length !== urls.length) {
     throw new Error(
       `Bling aceitou o PATCH MINIMAL mas nao atualizou as imagens corretamente. ` +
@@ -192,7 +176,7 @@ async function atualizarImagens(idProduto, urls) {
     );
   }
 
-  console.log(`[Bling] === SUCESSO id=${idProduto}: ${externasDepois.length} externas confirmadas ===`);
+  console.log(`[Bling] OK id=${idProduto}: ${externasDepois.length} externas confirmadas`);
 
   return {
     ok: true,
