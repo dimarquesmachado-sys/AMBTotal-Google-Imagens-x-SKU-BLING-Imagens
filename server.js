@@ -247,18 +247,12 @@ async function enviarUm({ sku, urls, variacoesUrls }) {
   if (!sku) return { erro: 'sku faltando' };
   if (!Array.isArray(urls) || urls.length === 0) return { erro: 'urls vazias - processe primeiro' };
   try {
-    console.log(`[enviarUm] === INICIO sku=${sku}, urls=${urls.length}, variacoesUrls=${variacoesUrls ? Object.keys(variacoesUrls).join(',') : 'nenhum'} ===`);
-
     const produto = await blingApi.buscarPorCodigo(sku);
     if (!produto.encontrado) return { erro: 'produto nao encontrado no Bling' };
-    console.log(`[enviarUm] Produto encontrado: id=${produto.id}, codigo=${produto.codigo}`);
 
     // Busca completo para saber se tem variacoes (formato='V')
     const completo = await blingApi.buscarProdutoCompleto(produto.id);
-    console.log(`[enviarUm] Produto completo: formato=${completo && completo.formato}, variacoes=${completo && completo.variacoes ? completo.variacoes.length : 'nao tem array'}`);
-
     const temVariacoes = completo && completo.formato === 'V' && Array.isArray(completo.variacoes) && completo.variacoes.length > 0;
-    console.log(`[enviarUm] temVariacoes=${temVariacoes}`);
 
     // 1) Envia imagens do produto-pai (sempre)
     const r = await blingApi.atualizarImagens(produto.id, urls);
@@ -273,7 +267,6 @@ async function enviarUm({ sku, urls, variacoesUrls }) {
 
     // 2) Se NAO tem variacoes, retorna so o resultado do pai
     if (!temVariacoes) {
-      console.log(`[enviarUm] Sem variacoes - finalizando com pai apenas`);
       return {
         ...resultadoPai,
         enviadoEm: new Date().toISOString()
@@ -281,44 +274,36 @@ async function enviarUm({ sku, urls, variacoesUrls }) {
     }
 
     // 3) Tem variacoes - itera por cada uma
-    console.log(`[Variacoes] === Produto ${sku} tem ${completo.variacoes.length} variacao(oes), processando ===`);
     const resultadosVariacoes = {};
     variacoesUrls = variacoesUrls || {};
-    console.log(`[Variacoes] variacoesUrls disponivel para codigos: [${Object.keys(variacoesUrls).join(', ')}]`);
 
     for (const variacao of completo.variacoes) {
-      console.log(`[Variacoes] --- Processando variacao id=${variacao.id}, nome="${variacao.nome}", codigo_no_pai="${variacao.codigo || '(vazio)'}" ---`);
-
       // O codigo da variacao vem vazio no JSON do pai. Precisa buscar individualmente.
       let codigoVar = variacao.codigo;
       if (!codigoVar) {
         try {
-          console.log(`[Variacoes] Buscando codigo via /produtos/${variacao.id}...`);
           const varCompleta = await blingApi.buscarProdutoCompleto(variacao.id);
           codigoVar = varCompleta && varCompleta.codigo ? varCompleta.codigo : null;
-          console.log(`[Variacoes] Codigo obtido: "${codigoVar}"`);
-          // delay para nao estourar rate limit
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise(r => setTimeout(r, 400)); // rate limit
         } catch (e) {
-          console.log(`[Variacoes] ERRO buscando codigo da variacao id=${variacao.id}: ${e.message}`);
+          console.log(`[Variacoes] Erro buscando codigo da variacao id=${variacao.id}: ${e.message}`);
         }
       }
 
       if (!codigoVar) {
-        console.log(`[Variacoes] PULANDO variacao id=${variacao.id} - sem codigo definido`);
         resultadosVariacoes[`(id ${variacao.id})`] = { erro: 'variacao sem codigo definido no Bling' };
         continue;
       }
 
-      // Decide quais URLs usar
+      // Decide quais URLs usar:
+      // - Se tem URLs especificas para essa variacao no Drive (subpasta), usa elas
+      // - Caso contrario, replica as URLs do produto-pai
       const temSubpastaPropria = !!(variacoesUrls[codigoVar] && variacoesUrls[codigoVar].length > 0);
       const urlsVar = temSubpastaPropria ? variacoesUrls[codigoVar] : urls;
       const fonte = temSubpastaPropria ? 'subpasta-propria' : 'replicado-pai';
-      console.log(`[Variacoes] Enviando ${urlsVar.length} URLs para ${codigoVar} (id=${variacao.id}, fonte=${fonte})`);
 
       try {
         const rVar = await blingApi.atualizarImagens(variacao.id, urlsVar);
-        console.log(`[Variacoes] SUCESSO ${codigoVar}: ${rVar.qtdExternasConfirmadas} confirmadas`);
         resultadosVariacoes[codigoVar] = {
           ok: true,
           idVariacao: variacao.id,
@@ -327,7 +312,6 @@ async function enviarUm({ sku, urls, variacoesUrls }) {
           qtdConfirmadas: rVar.qtdExternasConfirmadas
         };
       } catch (e) {
-        console.log(`[Variacoes] ERRO ${codigoVar}: ${e.message}`);
         resultadosVariacoes[codigoVar] = {
           erro: e.message,
           idVariacao: variacao.id,
@@ -336,8 +320,6 @@ async function enviarUm({ sku, urls, variacoesUrls }) {
       }
     }
 
-    console.log(`[enviarUm] === FIM ${sku}: ${Object.keys(resultadosVariacoes).length} variacoes processadas ===`);
-
     return {
       ...resultadoPai,
       temVariacoes: true,
@@ -345,7 +327,6 @@ async function enviarUm({ sku, urls, variacoesUrls }) {
       enviadoEm: new Date().toISOString()
     };
   } catch (e) {
-    console.log(`[enviarUm] ERRO GERAL: ${e.message}`);
     return { erro: e.message };
   }
 }
