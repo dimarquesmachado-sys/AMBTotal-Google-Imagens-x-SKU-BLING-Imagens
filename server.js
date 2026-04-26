@@ -25,7 +25,7 @@ app.get('/api/status', async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// OAuth Bling — Autorizar
+// OAuth Bling
 // ------------------------------------------------------------
 app.get('/auth/bling', (req, res) => {
   try {
@@ -54,7 +54,7 @@ app.get('/bling/callback', async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// /api/pastas — lista pastas do Drive + status no Bling
+// /api/pastas — lista pastas do Drive + qtd de imagens (SEM Bling - rápido)
 // ------------------------------------------------------------
 app.get('/api/pastas', async (req, res) => {
   try {
@@ -63,32 +63,66 @@ app.get('/api/pastas', async (req, res) => {
       return res.status(500).json({ erro: 'DRIVE_FOLDER_ID nao configurado' });
     }
 
-    // 1) Lista subpastas da pasta-mãe (cada subpasta = um SKU)
     const subpastas = await drive.listarSubpastas(pastaMae);
 
-    // 2) Pra cada subpasta, conta arquivos e busca no Bling
-    const resultados = [];
-    for (const sub of subpastas) {
-      const arquivos = await drive.listarImagens(sub.id);
-      let produtoBling = null;
+    // Paraleliza a contagem de imagens
+    const resultados = await Promise.all(subpastas.map(async (sub) => {
       try {
-        if (blingAuth.estaAutorizado()) {
-          produtoBling = await blingApi.buscarPorCodigo(sub.name);
-        } else {
-          produtoBling = { erro: 'Bling nao autorizado' };
-        }
+        const arquivos = await drive.listarImagens(sub.id);
+        return {
+          sku: sub.name,
+          pastaId: sub.id,
+          qtdImagens: arquivos.length
+        };
       } catch (e) {
-        produtoBling = { erro: e.message };
+        return {
+          sku: sub.name,
+          pastaId: sub.id,
+          qtdImagens: 0,
+          erro: e.message
+        };
       }
-      resultados.push({
-        sku: sub.name,
-        pastaId: sub.id,
-        qtdImagens: arquivos.length,
-        bling: produtoBling
-      });
-    }
+    }));
+
+    // Ordena por nome do SKU (case insensitive, numérico)
+    resultados.sort((a, b) => a.sku.localeCompare(b.sku, 'pt-BR', { numeric: true, sensitivity: 'base' }));
 
     res.json({ total: resultados.length, pastas: resultados });
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+// ------------------------------------------------------------
+// /api/verificar-bling — verifica vários SKUs no Bling em paralelo controlado
+// Body: { skus: ['ABC', 'DEF', ...] }
+// Retorna: { resultados: { ABC: {...}, DEF: {...} } }
+// ------------------------------------------------------------
+app.post('/api/verificar-bling', async (req, res) => {
+  try {
+    const { skus } = req.body;
+    if (!Array.isArray(skus) || skus.length === 0) {
+      return res.status(400).json({ erro: 'Envie um array de SKUs' });
+    }
+    if (!blingAuth.estaAutorizado()) {
+      return res.status(401).json({ erro: 'Bling nao autorizado' });
+    }
+
+    const resultados = {};
+    const concorrencia = 5; // 5 chamadas Bling em paralelo
+
+    for (let i = 0; i < skus.length; i += concorrencia) {
+      const lote = skus.slice(i, i + concorrencia);
+      await Promise.all(lote.map(async (sku) => {
+        try {
+          resultados[sku] = await blingApi.buscarPorCodigo(sku);
+        } catch (e) {
+          resultados[sku] = { erro: e.message };
+        }
+      }));
+    }
+
+    res.json({ resultados });
   } catch (e) {
     res.status(500).json({ erro: e.message });
   }
