@@ -141,7 +141,7 @@ async function atualizarImagens(idProduto, urls) {
   console.log(`[Bling] PATCH body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
 
   // 3) Faz PATCH
-const resultadoPatch = await chamarBling('PUT', `/produtos/${idProduto}`, bodyPatch);
+const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
   console.log(`[Bling] PATCH retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
 
   // delay antes da verificacao
