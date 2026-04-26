@@ -10,7 +10,18 @@ app.use(express.static('public'));
 const PORT = process.env.PORT || 3000;
 
 // ------------------------------------------------------------
-// /api/status — status geral (Drive configurado? Bling autorizado?)
+// Helpers
+// ------------------------------------------------------------
+function extrairNumero(nome) {
+  // Remove extensao e pega ultimo numero do nome (1.jpg -> 1, foto_3.jpg -> 3)
+  const base = String(nome || '').replace(/\.[^.]+$/, '');
+  const matches = base.match(/\d+/g);
+  if (!matches) return 999999;
+  return parseInt(matches[matches.length - 1], 10);
+}
+
+// ------------------------------------------------------------
+// /api/status
 // ------------------------------------------------------------
 app.get('/api/status', async (req, res) => {
   try {
@@ -54,7 +65,7 @@ app.get('/bling/callback', async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// /api/pastas — lista pastas do Drive + qtd de imagens (SEM Bling - rápido)
+// /api/pastas — lista pastas do Drive (rapido, sem Bling)
 // ------------------------------------------------------------
 app.get('/api/pastas', async (req, res) => {
   try {
@@ -65,7 +76,6 @@ app.get('/api/pastas', async (req, res) => {
 
     const subpastas = await drive.listarSubpastas(pastaMae);
 
-    // Paraleliza a contagem de imagens
     const resultados = await Promise.all(subpastas.map(async (sub) => {
       try {
         const arquivos = await drive.listarImagens(sub.id);
@@ -84,7 +94,6 @@ app.get('/api/pastas', async (req, res) => {
       }
     }));
 
-    // Ordena por nome do SKU (case insensitive, numérico)
     resultados.sort((a, b) => a.sku.localeCompare(b.sku, 'pt-BR', { numeric: true, sensitivity: 'base' }));
 
     res.json({ total: resultados.length, pastas: resultados });
@@ -94,9 +103,8 @@ app.get('/api/pastas', async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// /api/verificar-bling — verifica vários SKUs no Bling em paralelo controlado
-// Body: { skus: ['ABC', 'DEF', ...] }
-// Retorna: { resultados: { ABC: {...}, DEF: {...} } }
+// /api/verificar-bling — verifica varios SKUs no Bling
+// Body: { skus: ['ABC', ...] }
 // ------------------------------------------------------------
 app.post('/api/verificar-bling', async (req, res) => {
   try {
@@ -109,7 +117,7 @@ app.post('/api/verificar-bling', async (req, res) => {
     }
 
     const resultados = {};
-    const concorrencia = 5; // 5 chamadas Bling em paralelo
+    const concorrencia = 5;
 
     for (let i = 0; i < skus.length; i += concorrencia) {
       const lote = skus.slice(i, i + concorrencia);
@@ -120,6 +128,81 @@ app.post('/api/verificar-bling', async (req, res) => {
           resultados[sku] = { erro: e.message };
         }
       }));
+    }
+
+    res.json({ resultados });
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+// ------------------------------------------------------------
+// /api/processar — torna imagens publicas + gera URLs LH3
+// Body: { items: [{ sku, pastaId }, ...] }
+// ------------------------------------------------------------
+app.post('/api/processar', async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ erro: 'Envie array items: [{sku, pastaId}]' });
+    }
+    if (!drive.estaConfigurado()) {
+      return res.status(500).json({ erro: 'Drive nao configurado' });
+    }
+
+    const resultados = {};
+
+    // Processa SKUs em serie (mas imagens dentro de cada SKU em paralelo)
+    for (const item of items) {
+      const { sku, pastaId } = item;
+      if (!sku || !pastaId) {
+        resultados[sku || '(sem nome)'] = { erro: 'sku ou pastaId faltando' };
+        continue;
+      }
+
+      try {
+        // 1) Lista imagens
+        const imagens = await drive.listarImagens(pastaId);
+        if (imagens.length === 0) {
+          resultados[sku] = { qtd: 0, urls: [], aviso: 'pasta sem imagens' };
+          continue;
+        }
+
+        // 2) Ordena por numero no nome (1, 2, 3...)
+        imagens.sort((a, b) => {
+          const na = extrairNumero(a.name);
+          const nb = extrairNumero(b.name);
+          if (na !== nb) return na - nb;
+          return String(a.name).localeCompare(String(b.name), 'pt-BR');
+        });
+
+        // 3) Torna cada imagem publica (em paralelo, max 3 por vez)
+        const concorrencia = 3;
+        for (let i = 0; i < imagens.length; i += concorrencia) {
+          const lote = imagens.slice(i, i + concorrencia);
+          await Promise.all(lote.map(async (img) => {
+            try {
+              await drive.tornarPublico(img.id);
+            } catch (e) {
+              // Se ja for publico, alguns retornos podem dar erro - ignora
+              console.log(`Aviso ao publicar ${img.name}: ${e.message}`);
+            }
+          }));
+        }
+
+        // 4) Monta URLs LH3 na ordem
+        const urls = imagens.map(img => `https://lh3.googleusercontent.com/d/${img.id}`);
+        const nomes = imagens.map(img => img.name);
+
+        resultados[sku] = {
+          qtd: imagens.length,
+          urls,
+          nomes,
+          urlsConcatenadas: urls.join('|')
+        };
+      } catch (e) {
+        resultados[sku] = { erro: e.message };
+      }
     }
 
     res.json({ resultados });
