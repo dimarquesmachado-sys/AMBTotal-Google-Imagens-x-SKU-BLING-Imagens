@@ -4,6 +4,23 @@ const BLING_API = 'https://api.bling.com.br/Api/v3';
 const MAX_TENTATIVAS_5XX = 3;
 
 // ------------------------------------------------------------
+// WHITELIST de campos aceitos no PUT /produtos/{id}
+// (baseado no schema oficial bling-erp-api-js v5.8 - IUpdateBody)
+// Campos que o GET retorna mas o PUT NAO aceita estao removidos
+// ------------------------------------------------------------
+const CAMPOS_PUT_PERMITIDOS = [
+  'nome', 'codigo', 'preco', 'tipo', 'situacao', 'formato',
+  'descricaoCurta', 'dataValidade', 'unidade',
+  'pesoLiquido', 'pesoBruto', 'volumes', 'itensPorCaixa',
+  'gtin', 'gtinEmbalagem', 'tipoProducao', 'condicao',
+  'freteGratis', 'marca', 'descricaoComplementar', 'linkExterno', 'observacoes',
+  'categoria', 'estoque', 'actionEstoque', 'dimensoes', 'tributacao',
+  'midia', 'linhaProduto', 'estrutura', 'camposCustomizados', 'variacoes'
+];
+// Campos que o GET retorna mas PUT NAO aceita (causam rejeicao silenciosa):
+// - id, descricaoEmbalagemDiscreta, fornecedor, artigoPerigoso
+
+// ------------------------------------------------------------
 // Helper: faz request ao Bling com auto-renovacao de token
 // e retry em caso de instabilidade (5xx) do Bling
 // ------------------------------------------------------------
@@ -24,7 +41,6 @@ async function chamarBling(method, path, body, _tentativa = 1) {
   try {
     resp = await fetch(`${BLING_API}${path}`, opts);
   } catch (err) {
-    // erro de rede - tenta de novo
     if (_tentativa < MAX_TENTATIVAS_5XX) {
       const espera = 1500 * _tentativa;
       console.log(`[Bling] Erro de rede em ${method} ${path}. Tentativa ${_tentativa}/${MAX_TENTATIVAS_5XX}, esperando ${espera}ms...`);
@@ -34,7 +50,6 @@ async function chamarBling(method, path, body, _tentativa = 1) {
     throw err;
   }
 
-  // Token expirado: renova e tenta de novo
   if (resp.status === 401) {
     await blingAuth.renovarToken();
     token = await blingAuth.getToken();
@@ -42,7 +57,6 @@ async function chamarBling(method, path, body, _tentativa = 1) {
     resp = await fetch(`${BLING_API}${path}`, opts);
   }
 
-  // Bling instavel (5xx): tenta de novo com pausa
   if (resp.status >= 500 && resp.status < 600 && _tentativa < MAX_TENTATIVAS_5XX) {
     const espera = 2000 * _tentativa;
     console.log(`[Bling] ${method} ${path} retornou ${resp.status}. Tentativa ${_tentativa}/${MAX_TENTATIVAS_5XX}, esperando ${espera}ms...`);
@@ -52,7 +66,6 @@ async function chamarBling(method, path, body, _tentativa = 1) {
 
   if (!resp.ok) {
     const txt = await resp.text();
-    // mensagem mais amigavel para 503
     if (resp.status === 503) {
       throw new Error(`Bling fora do ar (503). Tente novamente em alguns minutos.`);
     }
@@ -64,8 +77,6 @@ async function chamarBling(method, path, body, _tentativa = 1) {
   try { return JSON.parse(txt); } catch (e) { return txt; }
 }
 
-// ------------------------------------------------------------
-// Busca produto pelo codigo (SKU) via listagem
 // ------------------------------------------------------------
 async function buscarPorCodigo(codigo) {
   const path = `/produtos?codigo=${encodeURIComponent(codigo)}&limite=10&pagina=1`;
@@ -87,16 +98,16 @@ function interpretarBusca(data, codigo) {
 }
 
 // ------------------------------------------------------------
-// Busca produto completo pelo ID
-// ------------------------------------------------------------
 async function buscarProdutoCompleto(idProduto) {
   const data = await chamarBling('GET', `/produtos/${idProduto}`);
   return data && data.data ? data.data : null;
 }
 
 // ------------------------------------------------------------
-// Atualiza imagens externas de um produto (SUBSTITUIR)
-// Estrutura correta no Bling V3: midia.imagens.externas
+// Atualiza imagens externas de um produto
+// Estrutura correta no Bling V3 (schema oficial):
+// midia.imagens.externas[{ link }]
+// midia.video.url (opcional, mantem se existir)
 // ------------------------------------------------------------
 async function atualizarImagens(idProduto, urls) {
   console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs ===`);
@@ -109,44 +120,53 @@ async function atualizarImagens(idProduto, urls) {
   const imagensAtual = midiaAtual.imagens || {};
   const externasAntes = imagensAtual.externas || [];
   const internasAntes = imagensAtual.internas || [];
+  const videoAtual = midiaAtual.video || null;
 
   console.log(`[Bling] Produto: id=${produto.id}, nome="${produto.nome}", codigo="${produto.codigo}"`);
-  console.log(`[Bling] Imagens ANTES (em midia.imagens): externas=${externasAntes.length}, internas=${internasAntes.length}`);
-  console.log(`[Bling] Campos de midia atual: ${Object.keys(midiaAtual).join(', ') || '(vazio)'}`);
-  if (externasAntes.length > 0) {
-    console.log(`[Bling] Estrutura externa[0] atual:`, JSON.stringify(externasAntes[0]));
-  }
+  console.log(`[Bling] Imagens ANTES: externas=${externasAntes.length}, internas=${internasAntes.length}`);
+  console.log(`[Bling] Video atual:`, JSON.stringify(videoAtual));
 
-  // 2) Monta novo body usando estrutura CORRETA: midia.imagens.externas
+  // 2) Monta novo midia (estrutura EXATA do schema oficial)
   const externasNovas = (urls || []).map(link => ({ link }));
-  const novoBody = {
-    ...produto,
-    midia: {
-      ...midiaAtual,             // preserva video e outros campos de midia
-      imagens: {
-        externas: externasNovas,
-        internas: internasAntes  // preserva internas
-      }
+  const novaMidia = {
+    imagens: {
+      externas: externasNovas
+      // NAO inclui "internas" - schema PUT nao aceita
     }
   };
+  // Se o produto ja tem video.url, mantem
+  if (videoAtual && videoAtual.url) {
+    novaMidia.video = { url: videoAtual.url };
+  }
 
-  // 3) Remove apenas o id (nao pode estar no body do PUT)
-  delete novoBody.id;
+  // 3) Monta body usando WHITELIST (so campos aceitos pelo schema PUT)
+  const novoBody = {};
+  for (const campo of CAMPOS_PUT_PERMITIDOS) {
+    if (produto[campo] !== undefined && produto[campo] !== null) {
+      novoBody[campo] = produto[campo];
+    }
+  }
+  // Sobrescreve midia com a nova estrutura
+  novoBody.midia = novaMidia;
+  // variacoes obrigatoria no schema - garante que existe (array vazio se nao tiver)
+  if (!Array.isArray(novoBody.variacoes)) {
+    novoBody.variacoes = [];
+  }
 
-  console.log(`[Bling] PUT body.midia keys: ${Object.keys(novoBody.midia).join(', ')}`);
-  console.log(`[Bling] PUT body.midia.imagens.externas (primeiras 3):`, JSON.stringify(novoBody.midia.imagens.externas.slice(0, 3)));
+  console.log(`[Bling] PUT body keys: ${Object.keys(novoBody).join(', ')}`);
+  console.log(`[Bling] PUT body.midia:`, JSON.stringify(novaMidia).slice(0, 500));
 
   // 4) Faz PUT
   const resultadoPut = await chamarBling('PUT', `/produtos/${idProduto}`, novoBody);
   console.log(`[Bling] PUT retorno:`, resultadoPut === null ? 'null' : JSON.stringify(resultadoPut).slice(0, 300));
 
-  // 5) VERIFICA pos-PUT
+  // 5) Verifica pos-PUT
   const verif = await buscarProdutoCompleto(idProduto);
   const verifMidia = (verif && verif.midia) || {};
   const verifImagens = verifMidia.imagens || {};
   const externasDepois = verifImagens.externas || [];
 
-  console.log(`[Bling] Imagens DEPOIS (em midia.imagens): externas=${externasDepois.length}`);
+  console.log(`[Bling] Imagens DEPOIS: externas=${externasDepois.length}`);
   if (externasDepois.length > 0) {
     console.log(`[Bling] Primeira externa apos PUT:`, JSON.stringify(externasDepois[0]));
   }
