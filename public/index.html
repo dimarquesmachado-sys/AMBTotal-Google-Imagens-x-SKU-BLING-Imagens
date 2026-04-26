@@ -21,18 +21,20 @@
     .err { color: #dc3545; font-weight: bold; }
     .warn { color: #f0ad4e; font-weight: bold; }
     .btn {
-      background: #1d72b8; color: white; border: none;
-      padding: 8px 14px; border-radius: 5px; cursor: pointer;
+      color: white; border: none; padding: 7px 12px;
+      border-radius: 5px; cursor: pointer;
       text-decoration: none; display: inline-block; font-size: 13px;
-      transition: background 0.15s; white-space: nowrap;
+      transition: filter 0.15s; white-space: nowrap;
     }
-    .btn:hover:not(:disabled) { background: #14538a; }
-    .btn:disabled { background: #aaa; cursor: not-allowed; }
-    .btn-sec { background: #6c757d; }
-    .btn-sec:hover:not(:disabled) { background: #545b62; }
-    .btn-suc { background: #28a745; }
-    .btn-suc:hover:not(:disabled) { background: #1e7e34; }
-    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn:hover:not(:disabled) { filter: brightness(0.9); }
+    .btn:disabled { background: #aaa !important; cursor: not-allowed; }
+    .btn-azul { background: #1d72b8; }
+    .btn-cinza { background: #6c757d; }
+    .btn-verde { background: #28a745; }
+    .btn-roxo { background: #6f42c1; }
+    .btn-rosa { background: #e83e8c; }
+    .btn-laranja { background: #fd7e14; }
+    .btn-sm { padding: 4px 9px; font-size: 12px; }
     .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .toolbar input[type="text"] {
       flex: 1; min-width: 220px; padding: 8px 12px; font-size: 14px;
@@ -42,27 +44,29 @@
     .info { font-size: 13px; color: #666; }
     .toolbar-row {
       display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;
+      align-items: center;
     }
+    .toolbar-row .label { font-size: 12px; color: #888; font-weight: 600; margin-right: 4px; }
+    .divisor { width: 1px; background: #ddd; height: 24px; margin: 0 4px; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
-    th { background: #f0f0f5; font-weight: 600; font-size: 13px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; font-size: 13px; }
+    th { background: #f0f0f5; font-weight: 600; font-size: 12px; }
     tr.selected { background: #e8f4fd; }
     tr:hover { background: #fafbfc; }
     tr.selected:hover { background: #d6ebfa; }
-    td .acoes { display: flex; gap: 4px; flex-wrap: wrap; }
     .checkbox-col { width: 36px; text-align: center; }
-    .acoes-col { width: 180px; }
-    .num-col { width: 70px; text-align: center; }
+    .acoes-col { width: 240px; }
+    .num-col { width: 60px; text-align: center; }
+    .acoes-cell { display: flex; gap: 3px; flex-wrap: wrap; }
     .loading, .vazio { text-align: center; padding: 40px; color: #999; }
     .badge {
       display: inline-block; padding: 2px 8px; border-radius: 12px;
-      font-size: 12px; font-weight: 600;
+      font-size: 11px; font-weight: 600;
     }
     .badge-ok { background: #d4edda; color: #155724; }
     .badge-err { background: #f8d7da; color: #721c24; }
     .badge-warn { background: #fff3cd; color: #856404; }
     .badge-cinza { background: #e9ecef; color: #6c757d; }
-    .acoes { margin-top: 12px; }
 
     /* Modal */
     .modal-overlay {
@@ -77,13 +81,13 @@
     }
     .modal h3 { color: #1d72b8; margin-bottom: 12px; }
     .modal textarea {
-      width: 100%; min-height: 200px; padding: 10px;
+      width: 100%; min-height: 180px; padding: 10px;
       font-family: monospace; font-size: 12px;
       border: 1px solid #ddd; border-radius: 5px;
       resize: vertical;
     }
     .modal .img-list {
-      margin: 10px 0; max-height: 250px; overflow: auto;
+      margin: 10px 0; max-height: 240px; overflow: auto;
       border: 1px solid #eee; border-radius: 5px; padding: 8px;
       font-size: 12px;
     }
@@ -95,6 +99,19 @@
     .modal .img-list .item .nome { font-weight: 600; min-width: 60px; }
     .modal .img-list .item .url { color: #666; font-family: monospace; word-break: break-all; }
     .modal .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 20px; right: 20px; max-width: 360px;
+      padding: 12px 16px; border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      font-size: 13px; color: white; z-index: 1000;
+      transform: translateX(400px); transition: transform 0.25s;
+    }
+    #toast.show { transform: translateX(0); }
+    #toast.ok { background: #28a745; }
+    #toast.err { background: #dc3545; }
+    #toast.info { background: #1d72b8; }
   </style>
 </head>
 <body>
@@ -106,8 +123,8 @@
     <div id="status">
       <div class="loading">Carregando status...</div>
     </div>
-    <div class="acoes">
-      <button class="btn btn-sec" onclick="recarregarPastas()">🔄 Recarregar pastas do Drive</button>
+    <div style="margin-top: 12px;">
+      <button class="btn btn-cinza" onclick="recarregarPastas()">🔄 Recarregar pastas do Drive</button>
     </div>
   </div>
 
@@ -118,14 +135,20 @@
       <span class="info" id="info">Carregando...</span>
     </div>
     <div class="toolbar-row">
-      <button class="btn" id="btnVerifSel" onclick="verificarSelecionados()" disabled>
-        Verificar Bling — selecionados (<span id="qtdSel1">0</span>)
-      </button>
-      <button class="btn btn-suc" id="btnProcSel" onclick="processarSelecionados()" disabled>
-        Processar imagens — selecionados (<span id="qtdSel2">0</span>)
-      </button>
-      <button class="btn btn-sec" onclick="verificarTodos()">Verificar Bling — todos</button>
-      <button class="btn btn-sec" onclick="processarTodos()">Processar imagens — todos</button>
+      <span class="label">Selecionados (<span id="qtdSel1">0</span>):</span>
+      <button class="btn btn-azul btn-sm" id="btnVerifSel" onclick="verificarSelecionados()" disabled>Verificar</button>
+      <button class="btn btn-verde btn-sm" id="btnProcSel" onclick="processarSelecionados()" disabled>Processar</button>
+      <button class="btn btn-roxo btn-sm" id="btnEnvSel" onclick="enviarSelecionados()" disabled>Enviar p/ Bling</button>
+      <span class="divisor"></span>
+      <button class="btn btn-laranja btn-sm" id="btnTudoSel" onclick="tudoSelecionados()" disabled>⚡ Tudo agora</button>
+    </div>
+    <div class="toolbar-row">
+      <span class="label">Todos (filtro atual):</span>
+      <button class="btn btn-azul btn-sm" onclick="verificarTodos()">Verificar</button>
+      <button class="btn btn-verde btn-sm" onclick="processarTodos()">Processar</button>
+      <button class="btn btn-roxo btn-sm" onclick="enviarTodos()">Enviar p/ Bling</button>
+      <span class="divisor"></span>
+      <button class="btn btn-laranja btn-sm" onclick="tudoTodos()">⚡ Tudo agora</button>
     </div>
   </div>
 
@@ -142,18 +165,32 @@
       <h3 id="modalTitulo">URLs do SKU</h3>
       <div id="modalConteudo"></div>
       <div class="actions">
-        <button class="btn btn-sec" onclick="fecharModal()">Fechar</button>
+        <button class="btn btn-cinza" onclick="fecharModal()">Fechar</button>
       </div>
     </div>
   </div>
 
+  <!-- Toast -->
+  <div id="toast"></div>
+
   <script>
-    // Estado global
-    let pastas = []; // [{ sku, pastaId, qtdImagens, bling, urls }]
+    let pastas = [];
     let selecionados = new Set();
 
     // ---------------------------------------------------
-    // Status
+    // Toast
+    // ---------------------------------------------------
+    function toast(msg, tipo = 'info') {
+      const el = document.getElementById('toast');
+      el.className = '';
+      el.classList.add(tipo);
+      el.textContent = msg;
+      setTimeout(() => el.classList.add('show'), 10);
+      setTimeout(() => el.classList.remove('show'), 3500);
+    }
+
+    // ---------------------------------------------------
+    // Status / Pastas
     // ---------------------------------------------------
     async function carregarStatus() {
       const div = document.getElementById('status');
@@ -163,13 +200,9 @@
         let h = '<div class="status-row">';
         h += `<div class="item">Drive: <span class="${d.drive ? 'ok' : 'err'}">${d.drive ? '✅ OK' : '❌ não configurado'}</span></div>`;
         h += `<div class="item">Bling: <span class="${d.bling ? 'ok' : 'err'}">${d.bling ? '✅ autorizado' : '❌ não autorizado'}</span>`;
-        if (!d.bling) {
-          h += ' <a href="/auth/bling" class="btn" style="margin-left: 10px;">Autorizar Bling</a>';
-        }
+        if (!d.bling) h += ' <a href="/auth/bling" class="btn btn-azul" style="margin-left: 10px;">Autorizar Bling</a>';
         h += '</div>';
-        if (d.pastaMae) {
-          h += `<div class="item" style="font-size: 12px; color: #888;">Pasta-mãe: ${d.pastaMae.slice(0, 12)}...</div>`;
-        }
+        if (d.pastaMae) h += `<div class="item" style="font-size: 12px; color: #888;">Pasta-mãe: ${d.pastaMae.slice(0, 12)}...</div>`;
         h += '</div>';
         div.innerHTML = h;
         return d;
@@ -195,11 +228,7 @@
           info.textContent = '';
           return;
         }
-        pastas = (d.pastas || []).map(p => ({
-          ...p,
-          bling: null,
-          urls: null  // resultado do processamento
-        }));
+        pastas = (d.pastas || []).map(p => ({ ...p, bling: null, urls: null, envio: null }));
         info.textContent = `${pastas.length} pasta(s) no Drive`;
         renderizar();
       } catch (e) {
@@ -214,12 +243,10 @@
     function renderizar() {
       const div = document.getElementById('lista');
       const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
-      const filtradas = termo
-        ? pastas.filter(p => p.sku.toLowerCase().includes(termo))
-        : pastas;
+      const filtradas = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
 
       if (pastas.length === 0) {
-        div.innerHTML = `<div class="vazio">Nenhuma pasta de SKU encontrada na pasta-mãe.<br>Crie uma subpasta com o nome do SKU e jogue as imagens dentro.</div>`;
+        div.innerHTML = `<div class="vazio">Nenhuma pasta de SKU encontrada na pasta-mãe.</div>`;
         return;
       }
       if (filtradas.length === 0) {
@@ -233,9 +260,10 @@
             <tr>
               <th class="checkbox-col"><input type="checkbox" id="selAll" onclick="toggleAll(this)"></th>
               <th>SKU (pasta)</th>
-              <th class="num-col">Imgs Drive</th>
-              <th>Produto no Bling</th>
+              <th class="num-col">Imgs</th>
+              <th>Bling</th>
               <th>URLs LH3</th>
+              <th>Status envio</th>
               <th class="acoes-col"></th>
             </tr>
           </thead>
@@ -243,8 +271,6 @@
       `;
       filtradas.forEach(p => {
         const sel = selecionados.has(p.sku);
-        const blingTxt = renderBling(p.bling);
-        const urlsTxt = renderUrls(p);
         html += `
           <tr class="${sel ? 'selected' : ''}">
             <td class="checkbox-col">
@@ -252,12 +278,15 @@
             </td>
             <td><strong>${escapeHtml(p.sku)}</strong></td>
             <td class="num-col">${p.qtdImagens}</td>
-            <td>${blingTxt}</td>
-            <td>${urlsTxt}</td>
+            <td>${renderBling(p.bling)}</td>
+            <td>${renderUrls(p)}</td>
+            <td>${renderEnvio(p.envio)}</td>
             <td class="acoes-col">
-              <div class="acoes">
-                <button class="btn btn-sm" onclick="verificarUm('${escapeAttr(p.sku)}', this)">Verificar</button>
-                <button class="btn btn-sm btn-suc" onclick="processarUm('${escapeAttr(p.sku)}', this)">Processar</button>
+              <div class="acoes-cell">
+                <button class="btn btn-azul btn-sm" onclick="verificarUm('${escapeAttr(p.sku)}', this)">Verif.</button>
+                <button class="btn btn-verde btn-sm" onclick="processarUm('${escapeAttr(p.sku)}', this)">Proc.</button>
+                <button class="btn btn-roxo btn-sm" onclick="enviarUm('${escapeAttr(p.sku)}', this)">Enviar</button>
+                <button class="btn btn-laranja btn-sm" onclick="tudoUm('${escapeAttr(p.sku)}', this)">⚡ Tudo</button>
               </div>
             </td>
           </tr>
@@ -268,153 +297,233 @@
     }
 
     function renderBling(b) {
-      if (b === null || b === undefined) return `<span class="badge badge-cinza">⏳ não verificado</span>`;
+      if (b === null || b === undefined) return `<span class="badge badge-cinza">⏳ não verif.</span>`;
       if (b.erro) return `<span class="badge badge-warn">⚠ ${escapeHtml(b.erro)}</span>`;
       if (!b.encontrado) return `<span class="badge badge-err">❌ não encontrado</span>`;
-      return `<span class="badge badge-ok">✅ ID ${b.id}</span> <span style="color: #666; font-size: 12px;">${escapeHtml(b.nome || '')}</span>`;
+      return `<span class="badge badge-ok">✅ ID ${b.id}</span>`;
     }
 
     function renderUrls(p) {
-      if (!p.urls) return `<span class="badge badge-cinza">⏳ não processado</span>`;
+      if (!p.urls) return `<span class="badge badge-cinza">⏳ não proc.</span>`;
       if (p.urls.erro) return `<span class="badge badge-warn">⚠ ${escapeHtml(p.urls.erro)}</span>`;
       if (p.urls.aviso) return `<span class="badge badge-warn">⚠ ${escapeHtml(p.urls.aviso)}</span>`;
-      return `<span class="badge badge-ok">✅ ${p.urls.qtd} URLs</span>
-        <button class="btn btn-sm btn-sec" onclick="verUrls('${escapeAttr(p.sku)}')">Ver</button>`;
+      return `<span class="badge badge-ok">✅ ${p.urls.qtd}</span>
+        <button class="btn btn-cinza btn-sm" onclick="verUrls('${escapeAttr(p.sku)}')">Ver</button>`;
+    }
+
+    function renderEnvio(e) {
+      if (!e) return `<span class="badge badge-cinza">⏳ não enviado</span>`;
+      if (e.erro) return `<span class="badge badge-err" title="${escapeAttr(e.erro)}">❌ ${escapeHtml(e.erro.slice(0, 50))}${e.erro.length > 50 ? '...' : ''}</span>`;
+      if (e.ok) {
+        const dt = e.enviadoEm ? new Date(e.enviadoEm) : null;
+        const hora = dt ? dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+        return `<span class="badge badge-ok">✅ ${e.qtdEnviadas} imgs ${hora}</span>`;
+      }
+      return `<span class="badge badge-cinza">?</span>`;
     }
 
     // ---------------------------------------------------
-    // Filtro
-    // ---------------------------------------------------
     function filtrar() { renderizar(); }
 
-    // ---------------------------------------------------
-    // Selecao
-    // ---------------------------------------------------
     function toggleSel(sku, checked) {
-      if (checked) selecionados.add(sku);
-      else selecionados.delete(sku);
-      atualizarBotaoSel();
-      renderizar();
+      if (checked) selecionados.add(sku); else selecionados.delete(sku);
+      atualizarBotaoSel(); renderizar();
     }
 
     function toggleAll(cb) {
       const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
-      const filtradas = termo
-        ? pastas.filter(p => p.sku.toLowerCase().includes(termo))
-        : pastas;
+      const filtradas = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
       if (cb.checked) filtradas.forEach(p => selecionados.add(p.sku));
       else filtradas.forEach(p => selecionados.delete(p.sku));
-      atualizarBotaoSel();
-      renderizar();
+      atualizarBotaoSel(); renderizar();
     }
 
     function atualizarBotaoSel() {
       const n = selecionados.size;
       document.getElementById('qtdSel1').textContent = n;
-      document.getElementById('qtdSel2').textContent = n;
-      document.getElementById('btnVerifSel').disabled = n === 0;
-      document.getElementById('btnProcSel').disabled = n === 0;
+      const ids = ['btnVerifSel', 'btnProcSel', 'btnEnvSel', 'btnTudoSel'];
+      ids.forEach(id => { document.getElementById(id).disabled = (n === 0); });
     }
 
     // ---------------------------------------------------
-    // Verificar Bling
+    // VERIFICAR (Bling - status)
     // ---------------------------------------------------
     async function verificarSkus(skus, btnEl) {
       if (!skus || skus.length === 0) return;
-      const original = btnEl ? btnEl.textContent : null;
-      if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Verificando...'; }
+      const orig = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
       try {
         const r = await fetch('/api/verificar-bling', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ skus })
         });
         const d = await r.json();
-        if (d.erro) { alert('Erro: ' + d.erro); return; }
+        if (d.erro) { toast('Erro: ' + d.erro, 'err'); return; }
         for (const sku of skus) {
           const p = pastas.find(x => x.sku === sku);
           if (p) p.bling = d.resultados[sku] || { erro: 'sem retorno' };
         }
         renderizar();
-      } catch (e) {
-        alert('Erro: ' + e.message);
-      } finally {
-        if (btnEl && original) { btnEl.disabled = false; btnEl.textContent = original; }
-      }
+      } catch (e) { toast('Erro: ' + e.message, 'err'); }
+      finally { if (btnEl && orig) { btnEl.disabled = false; btnEl.textContent = orig; } }
     }
 
     function verificarUm(sku, btn) { verificarSkus([sku], btn); }
-
-    function verificarSelecionados() {
-      const skus = Array.from(selecionados);
-      const btn = document.getElementById('btnVerifSel');
-      verificarSkus(skus, btn);
-    }
-
+    function verificarSelecionados() { verificarSkus(Array.from(selecionados), document.getElementById('btnVerifSel')); }
     function verificarTodos() {
-      const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
-      const skus = (termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas).map(p => p.sku);
-      if (skus.length === 0) { alert('Nenhum SKU para verificar'); return; }
-      if (skus.length > 50 && !confirm(`Vai verificar ${skus.length} SKUs no Bling. Continuar?`)) return;
-      verificarSkus(skus);
+      const lista = aplicarFiltro();
+      if (lista.length === 0) { toast('Nenhum SKU para verificar', 'err'); return; }
+      verificarSkus(lista.map(p => p.sku));
     }
 
     // ---------------------------------------------------
-    // Processar imagens (Drive: torna publico + gera URLs)
+    // PROCESSAR (Drive - publicar + URLs)
     // ---------------------------------------------------
-    async function processarSkus(items, btnEl) {
+    async function processarItems(items, btnEl) {
       if (!items || items.length === 0) return;
-      const original = btnEl ? btnEl.textContent : null;
-      if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Processando...'; }
+      const orig = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
       try {
         const r = await fetch('/api/processar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ items })
         });
         const d = await r.json();
-        if (d.erro) { alert('Erro: ' + d.erro); return; }
+        if (d.erro) { toast('Erro: ' + d.erro, 'err'); return; }
         for (const it of items) {
           const p = pastas.find(x => x.sku === it.sku);
           if (p) p.urls = d.resultados[it.sku] || { erro: 'sem retorno' };
         }
         renderizar();
-      } catch (e) {
-        alert('Erro: ' + e.message);
-      } finally {
-        if (btnEl && original) { btnEl.disabled = false; btnEl.textContent = original; }
-      }
+        toast(`${items.length} processado(s)`, 'ok');
+      } catch (e) { toast('Erro: ' + e.message, 'err'); }
+      finally { if (btnEl && orig) { btnEl.disabled = false; btnEl.textContent = orig; } }
     }
 
     function processarUm(sku, btn) {
       const p = pastas.find(x => x.sku === sku);
       if (!p) return;
-      processarSkus([{ sku: p.sku, pastaId: p.pastaId }], btn);
+      processarItems([{ sku: p.sku, pastaId: p.pastaId }], btn);
     }
-
     function processarSelecionados() {
       const items = pastas.filter(p => selecionados.has(p.sku)).map(p => ({ sku: p.sku, pastaId: p.pastaId }));
-      const btn = document.getElementById('btnProcSel');
-      processarSkus(items, btn);
+      processarItems(items, document.getElementById('btnProcSel'));
     }
-
     function processarTodos() {
-      const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
-      const lista = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
-      if (lista.length === 0) { alert('Nenhum SKU para processar'); return; }
-      if (lista.length > 30 && !confirm(`Vai processar ${lista.length} SKUs no Drive (tornar imagens públicas + gerar URLs). Continuar?`)) return;
-      const items = lista.map(p => ({ sku: p.sku, pastaId: p.pastaId }));
-      processarSkus(items);
+      const lista = aplicarFiltro();
+      if (lista.length === 0) { toast('Nenhum SKU pra processar', 'err'); return; }
+      if (lista.length > 30 && !confirm(`Processar ${lista.length} SKUs no Drive. Continuar?`)) return;
+      processarItems(lista.map(p => ({ sku: p.sku, pastaId: p.pastaId })));
     }
 
     // ---------------------------------------------------
-    // Modal de URLs
+    // ENVIAR (Bling - atualiza imagens)
+    // ---------------------------------------------------
+    async function enviarItems(items, btnEl) {
+      if (!items || items.length === 0) return;
+      // Filtra os que tem URLs prontas
+      const validos = items.filter(it => {
+        const p = pastas.find(x => x.sku === it.sku);
+        return p && p.urls && p.urls.urls && p.urls.urls.length > 0;
+      });
+      if (validos.length === 0) {
+        toast('Nenhum SKU com URLs processadas. Use "Tudo agora" ou "Processar" antes.', 'err');
+        return;
+      }
+      const corpo = validos.map(it => {
+        const p = pastas.find(x => x.sku === it.sku);
+        return { sku: p.sku, urls: p.urls.urls };
+      });
+      const orig = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
+      try {
+        const r = await fetch('/api/enviar-bling', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: corpo })
+        });
+        const d = await r.json();
+        if (d.erro) { toast('Erro: ' + d.erro, 'err'); return; }
+        for (const it of corpo) {
+          const p = pastas.find(x => x.sku === it.sku);
+          if (p) p.envio = d.resultados[it.sku] || { erro: 'sem retorno' };
+        }
+        renderizar();
+        const ok = Object.values(d.resultados).filter(x => x && x.ok).length;
+        const err = Object.values(d.resultados).filter(x => x && x.erro).length;
+        toast(`Enviados: ${ok} ok, ${err} erro(s)`, err ? 'err' : 'ok');
+      } catch (e) { toast('Erro: ' + e.message, 'err'); }
+      finally { if (btnEl && orig) { btnEl.disabled = false; btnEl.textContent = orig; } }
+    }
+
+    function enviarUm(sku, btn) { enviarItems([{ sku }], btn); }
+    function enviarSelecionados() {
+      const items = Array.from(selecionados).map(sku => ({ sku }));
+      enviarItems(items, document.getElementById('btnEnvSel'));
+    }
+    function enviarTodos() {
+      const lista = aplicarFiltro();
+      const items = lista.map(p => ({ sku: p.sku }));
+      enviarItems(items);
+    }
+
+    // ---------------------------------------------------
+    // TUDO AGORA (Drive + Bling em sequencia)
+    // ---------------------------------------------------
+    async function tudoItems(items, btnEl) {
+      if (!items || items.length === 0) return;
+      const orig = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
+      try {
+        const r = await fetch('/api/processar-e-enviar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items })
+        });
+        const d = await r.json();
+        if (d.erro) { toast('Erro: ' + d.erro, 'err'); return; }
+        for (const it of items) {
+          const p = pastas.find(x => x.sku === it.sku);
+          if (!p) continue;
+          const res = d.resultados[it.sku] || {};
+          if (res.processamento) p.urls = res.processamento;
+          if (res.envio) p.envio = res.envio;
+          if (res.erro) {
+            // Erro no processamento - urls e envio ficam como erro
+            if (!p.urls) p.urls = { erro: res.erro };
+            if (!p.envio) p.envio = { erro: res.erro };
+          }
+        }
+        renderizar();
+        const ok = Object.values(d.resultados).filter(x => x && x.envio && x.envio.ok).length;
+        const err = items.length - ok;
+        toast(`Tudo agora: ${ok} concluído(s), ${err} com problema`, err ? 'err' : 'ok');
+      } catch (e) { toast('Erro: ' + e.message, 'err'); }
+      finally { if (btnEl && orig) { btnEl.disabled = false; btnEl.textContent = orig; } }
+    }
+
+    function tudoUm(sku, btn) {
+      const p = pastas.find(x => x.sku === sku);
+      if (!p) return;
+      tudoItems([{ sku: p.sku, pastaId: p.pastaId }], btn);
+    }
+    function tudoSelecionados() {
+      const items = pastas.filter(p => selecionados.has(p.sku)).map(p => ({ sku: p.sku, pastaId: p.pastaId }));
+      if (items.length > 20 && !confirm(`Vai processar e enviar ${items.length} SKUs pro Bling. Continuar?`)) return;
+      tudoItems(items, document.getElementById('btnTudoSel'));
+    }
+    function tudoTodos() {
+      const lista = aplicarFiltro();
+      if (lista.length === 0) { toast('Nenhum SKU pra processar', 'err'); return; }
+      if (lista.length > 20 && !confirm(`Vai processar e enviar ${lista.length} SKUs pro Bling. Continuar?`)) return;
+      tudoItems(lista.map(p => ({ sku: p.sku, pastaId: p.pastaId })));
+    }
+
+    // ---------------------------------------------------
+    // Modal URLs
     // ---------------------------------------------------
     function verUrls(sku) {
       const p = pastas.find(x => x.sku === sku);
-      if (!p || !p.urls || !p.urls.urls) { alert('SKU sem URLs processadas'); return; }
+      if (!p || !p.urls || !p.urls.urls) { toast('SKU sem URLs', 'err'); return; }
       document.getElementById('modalTitulo').textContent = `URLs do SKU ${sku} — ${p.urls.qtd} imagens`;
-
       const conc = p.urls.urlsConcatenadas || (p.urls.urls || []).join('|');
       const nomes = p.urls.nomes || [];
 
@@ -435,13 +544,15 @@
       document.getElementById('modal').classList.add('show');
     }
 
-    function fecharModal() {
-      document.getElementById('modal').classList.remove('show');
-    }
+    function fecharModal() { document.getElementById('modal').classList.remove('show'); }
 
     // ---------------------------------------------------
     // Helpers
     // ---------------------------------------------------
+    function aplicarFiltro() {
+      const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
+      return termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
+    }
     function escapeHtml(s) {
       return String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -451,15 +562,12 @@
       return String(s == null ? '' : s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
-    // ---------------------------------------------------
     // Boot
-    // ---------------------------------------------------
     (async () => {
       const s = await carregarStatus();
-      if (s.drive) {
-        await recarregarPastas();
-      } else {
-        document.getElementById('lista').innerHTML = `<div class="vazio">Configure o Drive nas variáveis de ambiente do Render primeiro.</div>`;
+      if (s.drive) await recarregarPastas();
+      else {
+        document.getElementById('lista').innerHTML = `<div class="vazio">Configure o Drive primeiro.</div>`;
         document.getElementById('info').textContent = '';
       }
     })();
