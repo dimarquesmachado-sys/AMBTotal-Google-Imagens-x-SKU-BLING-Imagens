@@ -118,12 +118,9 @@ async function atualizarImagens(idProduto, urls) {
   // delay para nao estourar 3 req/s do Bling
   await new Promise(r => setTimeout(r, 400));
 
-  // 2) Body MINIMAL ABSOLUTO - APENAS midia.imagens.externa
+  // 2) Body MINIMAL - APENAS midia.imagens.externa
   // ATENCAO: Bling usa SINGULAR "externa" no PUT/PATCH (e nao "externas" plural!)
   // Descoberta via DevTools comparando com a request da UI do Bling.
-  // NAO incluimos nome/codigo/preco para evitar revalidacao do produto inteiro
-  // (o Bling barra com erro 400 se algum campo aninhado como estrutura.tipoEstoque
-  // estiver fora do padrao do schema PUT)
   const externasNovas = (urls || []).map(link => ({ link }));
   const bodyPatch = {
     midia: {
@@ -132,6 +129,22 @@ async function atualizarImagens(idProduto, urls) {
       }
     }
   };
+
+  // 2.1) Produtos KIT/composicao (formato="E"): Bling revalida estrutura
+  // mesmo em PATCH, e da erro 400 com tipoEstoque/componentes.
+  // Solucao: preservar estrutura existente do produto (igual a UI faz).
+  if (produtoAntes.formato === 'E' && produtoAntes.estrutura) {
+    bodyPatch.estrutura = {
+      tipoEstoque: produtoAntes.estrutura.tipoEstoque || 'V',
+      lancamentoEstoque: produtoAntes.estrutura.lancamentoEstoque || 'P',
+      componentes: (produtoAntes.estrutura.componentes || []).map(c => ({
+        componente: { id: (c.produto && c.produto.id) || (c.componente && c.componente.id) },
+        quantidade: c.quantidade
+      })),
+      excluir: false
+    };
+    console.log(`[Bling] Produto KIT detectado (formato=E). Preservando estrutura com ${bodyPatch.estrutura.componentes.length} componentes.`);
+  }
 
   console.log(`[Bling] PATCH body keys: ${Object.keys(bodyPatch).join(', ')}`);
   console.log(`[Bling] PATCH body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
