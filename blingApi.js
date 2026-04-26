@@ -47,6 +47,14 @@ async function chamarBling(method, path, body, _tentativa = 1) {
     return chamarBling(method, path, body, _tentativa + 1);
   }
 
+  // 429 = rate limit (3 req/s do Bling). Espera e tenta de novo
+  if (resp.status === 429 && _tentativa < MAX_TENTATIVAS_5XX) {
+    const espera = 1500 * _tentativa;
+    console.log(`[Bling] ${method} ${path} retornou 429 (rate limit). Tentativa ${_tentativa}/${MAX_TENTATIVAS_5XX}, esperando ${espera}ms...`);
+    await new Promise(r => setTimeout(r, espera));
+    return chamarBling(method, path, body, _tentativa + 1);
+  }
+
   if (!resp.ok) {
     const txt = await resp.text();
     if (resp.status === 503) {
@@ -90,6 +98,7 @@ async function buscarProdutoCompleto(idProduto) {
 // Atualiza imagens externas de um produto usando PATCH
 // PATCH permite atualizar APENAS os campos enviados
 // (sem precisar mandar o produto inteiro)
+// Bling tem limite de 3 req/s - usa delay entre chamadas
 // ------------------------------------------------------------
 async function atualizarImagens(idProduto, urls) {
   console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs (PATCH) ===`);
@@ -103,6 +112,9 @@ async function atualizarImagens(idProduto, urls) {
 
   console.log(`[Bling] Produto: id=${produtoAntes.id}, nome="${produtoAntes.nome}", codigo="${produtoAntes.codigo}"`);
   console.log(`[Bling] Imagens ANTES: externas=${externasAntes.length}, internas=${internasAntes.length}`);
+
+  // delay para nao estourar 3 req/s do Bling
+  await new Promise(r => setTimeout(r, 400));
 
   // 2) Body MINIMO - so o que precisa ser alterado
   const externasNovas = (urls || []).map(link => ({ link }));
@@ -119,6 +131,9 @@ async function atualizarImagens(idProduto, urls) {
   // 3) Faz PATCH
   const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
   console.log(`[Bling] PATCH retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
+
+  // delay antes da verificacao
+  await new Promise(r => setTimeout(r, 400));
 
   // 4) Verifica
   const verif = await buscarProdutoCompleto(idProduto);
