@@ -52,6 +52,22 @@ async function listarImagens(folderId) {
   return resp.data.files || [];
 }
 
+// Retorna { imagens: [...], subpastas: [...] } em uma unica varredura
+// Util para detectar produtos com variacoes (subpastas dentro da pasta-pai)
+async function listarConteudoCompleto(folderId) {
+  const drive = getCliente();
+  const resp = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false`,
+    fields: 'files(id, name, mimeType, createdTime, modifiedTime)',
+    pageSize: 1000,
+    orderBy: 'name'
+  });
+  const arquivos = resp.data.files || [];
+  const imagens = arquivos.filter(f => (f.mimeType || '').startsWith('image/'));
+  const subpastas = arquivos.filter(f => f.mimeType === 'application/vnd.google-apps.folder');
+  return { imagens, subpastas };
+}
+
 async function tornarPublico(fileId) {
   const drive = getCliente();
   await drive.permissions.create({
@@ -68,5 +84,6 @@ module.exports = {
   estaConfigurado,
   listarSubpastas,
   listarImagens,
+  listarConteudoCompleto,
   tornarPublico
 };
