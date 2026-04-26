@@ -21,7 +21,6 @@ async function chamarBling(method, path, body) {
   let resp = await fetch(`${BLING_API}${path}`, opts);
 
   if (resp.status === 401) {
-    // Token expirou — renova e tenta de novo
     await blingAuth.renovarToken();
     token = await blingAuth.getToken();
     opts.headers.Authorization = `Bearer ${token}`;
@@ -33,15 +32,13 @@ async function chamarBling(method, path, body) {
     throw new Error(`Bling ${method} ${path} ${resp.status}: ${txt}`);
   }
 
-  // Alguns endpoints PUT do Bling devolvem corpo vazio
   const txt = await resp.text();
   if (!txt) return null;
   try { return JSON.parse(txt); } catch (e) { return txt; }
 }
 
 // ------------------------------------------------------------
-// Busca produto pelo codigo (SKU) — usa endpoint de listagem
-// Retorna info resumida (id, codigo, nome) — sem imagens
+// Busca produto pelo codigo (SKU) via listagem
 // ------------------------------------------------------------
 async function buscarPorCodigo(codigo) {
   const path = `/produtos?codigo=${encodeURIComponent(codigo)}&limite=10&pagina=1`;
@@ -54,7 +51,6 @@ function interpretarBusca(data, codigo) {
   const exato = arr.find(p => (p.codigo || '').toUpperCase() === codigo.toUpperCase());
   const escolhido = exato || arr[0];
   if (!escolhido) return { encontrado: false };
-
   return {
     encontrado: true,
     id: escolhido.id,
@@ -64,8 +60,7 @@ function interpretarBusca(data, codigo) {
 }
 
 // ------------------------------------------------------------
-// Busca produto completo (todos os campos) pelo ID
-// Necessario antes do PUT pra preservar campos existentes
+// Busca produto completo pelo ID
 // ------------------------------------------------------------
 async function buscarProdutoCompleto(idProduto) {
   const data = await chamarBling('GET', `/produtos/${idProduto}`);
@@ -74,41 +69,70 @@ async function buscarProdutoCompleto(idProduto) {
 
 // ------------------------------------------------------------
 // Atualiza imagens externas de um produto (SUBSTITUIR)
-// idProduto: ID numerico do produto no Bling
-// urls: array de strings com as URLs LH3
-//
-// Estrategia: GET completo -> substitui imagens.externas -> PUT
-// Mantem imagens.internas intactas (mais seguro)
 // ------------------------------------------------------------
 async function atualizarImagens(idProduto, urls) {
+  console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs ===`);
+
   // 1) Busca produto completo
   const produto = await buscarProdutoCompleto(idProduto);
   if (!produto) throw new Error(`Produto ${idProduto} nao encontrado no Bling`);
 
-  // 2) Monta novo objeto de imagens
-  const externasNovas = (urls || []).map(link => ({ link }));
-  const internasAntigas = (produto.imagens && produto.imagens.internas) || [];
+  const externasAntes = (produto.imagens && produto.imagens.externas) || [];
+  const internasAntes = (produto.imagens && produto.imagens.internas) || [];
+  console.log(`[Bling] Produto: id=${produto.id}, nome="${produto.nome}", codigo="${produto.codigo}"`);
+  console.log(`[Bling] Imagens ANTES: externas=${externasAntes.length}, internas=${internasAntes.length}`);
+  console.log(`[Bling] Campos do produto: ${Object.keys(produto).join(', ')}`);
 
+  if (produto.imagens) {
+    console.log(`[Bling] Estrutura imagens.externas exemplo:`, JSON.stringify((produto.imagens.externas || [])[0] || null));
+  }
+
+  // 2) Monta novo body com imagens substituidas
+  const externasNovas = (urls || []).map(link => ({ link }));
   const novoBody = {
     ...produto,
     imagens: {
       externas: externasNovas,
-      internas: internasAntigas
+      internas: internasAntes  // mantem internas intactas
     }
   };
 
-  // 3) Remove campos que podem causar problema no PUT
-  delete novoBody.id; // o ID vai na URL
-  // Bling alguns campos retornados que nao aceita no PUT — removemos os mais comuns
+  // 3) Remove campos que costumam dar problema no PUT
+  delete novoBody.id;
   delete novoBody.midia;
 
-  // 4) PUT
-  const resultado = await chamarBling('PUT', `/produtos/${idProduto}`, novoBody);
+  console.log(`[Bling] PUT body keys: ${Object.keys(novoBody).join(', ')}`);
+  console.log(`[Bling] PUT body.imagens.externas (primeiras 3):`, JSON.stringify(novoBody.imagens.externas.slice(0, 3)));
+
+  // 4) Faz PUT
+  const resultadoPut = await chamarBling('PUT', `/produtos/${idProduto}`, novoBody);
+  console.log(`[Bling] PUT retorno:`, resultadoPut === null ? 'null (corpo vazio)' : JSON.stringify(resultadoPut).slice(0, 300));
+
+  // 5) VERIFICA pos-PUT que realmente atualizou (faz GET de novo)
+  const verif = await buscarProdutoCompleto(idProduto);
+  const externasDepois = (verif && verif.imagens && verif.imagens.externas) || [];
+  console.log(`[Bling] Imagens DEPOIS: externas=${externasDepois.length}`);
+  if (externasDepois.length > 0) {
+    console.log(`[Bling] Primeira imagem externa apos PUT:`, JSON.stringify(externasDepois[0]));
+  }
+
+  if (externasDepois.length !== urls.length) {
+    // PUT retornou OK mas Bling nao atualizou - bug silencioso
+    throw new Error(
+      `Bling aceitou o PUT mas nao atualizou as imagens. ` +
+      `Esperado: ${urls.length} externas, atual: ${externasDepois.length}. ` +
+      `Pode ser config do Bling (Imagens Internas vs Externas) ou problema no body.`
+    );
+  }
+
+  console.log(`[Bling] === SUCESSO id=${idProduto}: ${externasDepois.length} externas confirmadas ===`);
+
   return {
     ok: true,
     qtdExternas: externasNovas.length,
-    qtdInternasMantidas: internasAntigas.length,
-    retornoBling: resultado
+    qtdInternasMantidas: internasAntes.length,
+    qtdExternasConfirmadas: externasDepois.length,
+    retornoBling: resultadoPut
   };
 }
 
