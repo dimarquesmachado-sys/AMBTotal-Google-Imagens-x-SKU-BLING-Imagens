@@ -34,7 +34,7 @@ async function listarSubpastas(folderId) {
   const drive = getCliente();
   const resp = await drive.files.list({
     q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-    fields: 'files(id, name)',
+    fields: 'files(id, name, createdTime, modifiedTime)',
     pageSize: 1000,
     orderBy: 'name'
   });
