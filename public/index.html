@@ -22,7 +22,7 @@
     .btn-verde { background: #28a745; }
     .btn-roxo { background: #6f42c1; }
     .btn-laranja { background: #fd7e14; }
-    .btn-sm { padding: 4px 9px; font-size: 12px; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
     .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .toolbar input[type="text"] { flex: 1; min-width: 220px; padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; }
     .toolbar input[type="text"]:focus { outline: none; border-color: #1d72b8; }
@@ -37,9 +37,9 @@
     tr:hover { background: #fafbfc; }
     tr.selected:hover { background: #d6ebfa; }
     .checkbox-col { width: 36px; text-align: center; }
-    .acoes-col { width: 270px; }
+    .acoes-col { width: 380px; }
     .num-col { width: 60px; text-align: center; }
-    .acoes-cell { display: flex; gap: 3px; flex-wrap: wrap; }
+    .acoes-cell { display: flex; gap: 4px; flex-wrap: wrap; }
     .loading, .vazio { text-align: center; padding: 40px; color: #999; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
     .badge-ok { background: #d4edda; color: #155724; }
@@ -204,10 +204,10 @@
             <td>${renderEnvio(p.envio)}</td>
             <td class="acoes-col">
               <div class="acoes-cell">
-                <button class="btn btn-azul btn-sm" onclick="verificarUm('${escapeAttr(p.sku)}', this)">Verif.</button>
-                <button class="btn btn-verde btn-sm" onclick="processarUm('${escapeAttr(p.sku)}', this)">Proc.</button>
-                <button class="btn btn-roxo btn-sm" onclick="enviarUm('${escapeAttr(p.sku)}', this)">Enviar</button>
-                <button class="btn btn-laranja btn-sm" onclick="tudoUm('${escapeAttr(p.sku)}', this)">⚡ Direto</button>
+                <button class="btn btn-azul btn-sm" onclick="verificarUm('${escapeAttr(p.sku)}', this)">Verificar</button>
+                <button class="btn btn-verde btn-sm" onclick="processarUm('${escapeAttr(p.sku)}', this)">Processar</button>
+                <button class="btn btn-roxo btn-sm" onclick="enviarUm('${escapeAttr(p.sku)}', this)">Enviar p/ Bling</button>
+                <button class="btn btn-laranja btn-sm" onclick="tudoUm('${escapeAttr(p.sku)}', this)">⚡ Enviar direto</button>
               </div>
             </td>
           </tr>
