@@ -146,12 +146,27 @@ async function atualizarImagens(idProduto, urls) {
     console.log(`[Bling] Produto KIT detectado (formato=E). Preservando estrutura com ${bodyPatch.estrutura.componentes.length} componentes.`);
   }
 
-  console.log(`[Bling] PATCH body keys: ${Object.keys(bodyPatch).join(', ')}`);
-  console.log(`[Bling] PATCH body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
+  // 3) Faz PATCH em 2 etapas para garantir SUBSTITUICAO real
+  // (Bling faz "merge" se mandar array com itens direto, entao primeiro
+  // limpamos com array vazio, e depois adicionamos as novas URLs)
 
-  // 3) Faz PATCH
+  // Etapa 3.1: PATCH com externa vazio (limpa tudo)
+  const bodyLimpar = JSON.parse(JSON.stringify(bodyPatch));
+  bodyLimpar.midia.imagens.externa = [];
+  console.log(`[Bling] PATCH 1/2 (limpar): externa=[]`);
+  const resLimpar = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyLimpar);
+  console.log(`[Bling] PATCH 1/2 retorno:`, resLimpar === null ? 'null' : JSON.stringify(resLimpar).slice(0, 200));
+
+  // delay entre os 2 PATCH para nao estourar 3 req/s
+  await new Promise(r => setTimeout(r, 400));
+
+  // Etapa 3.2: PATCH com as URLs novas
+  console.log(`[Bling] PATCH 2/2 (adicionar): externa=[${externasNovas.length} URLs]`);
+  console.log(`[Bling] PATCH 2/2 body keys: ${Object.keys(bodyPatch).join(', ')}`);
+  console.log(`[Bling] PATCH 2/2 body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
+
   const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
-  console.log(`[Bling] PATCH retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
+  console.log(`[Bling] PATCH 2/2 retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
 
   // delay antes da verificacao
   await new Promise(r => setTimeout(r, 400));
