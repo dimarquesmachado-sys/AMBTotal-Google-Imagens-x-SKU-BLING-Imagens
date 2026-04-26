@@ -120,28 +120,26 @@ async function atualizarImagens(idProduto, urls) {
 
   // 2) Body MINIMAL ABSOLUTO - sugestao da comunidade
   // Inclui nome+codigo+preco para o Bling "reconhecer" como atualizacao valida
-  // midia: APENAS imagens.externas (sem video, internas, imagensURL)
+  // midia: APENAS imagens.externa (sem video, internas, imagensURL)
+  // ATENCAO: Bling usa SINGULAR "externa" no PUT/PATCH (e nao "externas" plural!)
+  // Descoberta via DevTools comparando com a request da UI do Bling
   const externasNovas = (urls || []).map(link => ({ link }));
- const bodyPatch = {
-  nome: produtoAntes.nome,
-  codigo: produtoAntes.codigo,
-  preco: produtoAntes.preco,
-  tipo: produtoAntes.tipo || "P",
-  situacao: produtoAntes.situacao || "A",
-  formato: produtoAntes.formato || "S",
-
-  midia: {
-    imagens: {
-      externas: externasNovas
+  const bodyPatch = {
+    nome: produtoAntes.nome,
+    codigo: produtoAntes.codigo,
+    preco: produtoAntes.preco,
+    midia: {
+      imagens: {
+        externa: externasNovas  // SINGULAR - bug/inconsistencia da API do Bling
+      }
     }
-  }
-};
+  };
 
   console.log(`[Bling] PATCH body keys: ${Object.keys(bodyPatch).join(', ')}`);
   console.log(`[Bling] PATCH body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
 
   // 3) Faz PATCH
-const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
+  const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
   console.log(`[Bling] PATCH retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
 
   // delay antes da verificacao
