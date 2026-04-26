@@ -257,6 +257,58 @@ app.get('/api/debug-produto/:codigo', async (req, res) => {
 });
 
 // ------------------------------------------------------------
+// /api/sondar/:codigo - sondagem de rotas (so GET, nao altera nada)
+// Tenta varias rotas potenciais para descobrir se existe endpoint
+// especifico de midia/imagens
+// ------------------------------------------------------------
+app.get('/api/sondar/:codigo', async (req, res) => {
+  try {
+    if (!blingAuth.estaAutorizado()) return res.status(401).json({ erro: 'Bling nao autorizado' });
+
+    const resumo = await blingApi.buscarPorCodigo(req.params.codigo);
+    if (!resumo.encontrado) return res.json({ encontrado: false });
+    const id = resumo.id;
+
+    const rotas = [
+      `/produtos/${id}/midia`,
+      `/produtos/${id}/midias`,
+      `/produtos/${id}/imagens`,
+      `/produtos/${id}/imagens/externas`,
+      `/produtos/midia/${id}`,
+      `/produtos/imagens/${id}`,
+      `/produtos/${id}/anexos`
+    ];
+
+    const token = await blingAuth.getToken();
+    const resultados = [];
+
+    for (const rota of rotas) {
+      // Espera entre cada call para nao estourar rate limit (3 req/s)
+      await new Promise(r => setTimeout(r, 400));
+      try {
+        const resp = await fetch(`https://api.bling.com.br/Api/v3${rota}`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const txt = await resp.text();
+        resultados.push({
+          rota,
+          status: resp.status,
+          tipo: resp.status === 404 ? 'NAO EXISTE' : (resp.status >= 200 && resp.status < 300 ? 'EXISTE!' : 'outro'),
+          body: txt.slice(0, 200)
+        });
+      } catch (e) {
+        resultados.push({ rota, erro: e.message });
+      }
+    }
+
+    res.json({ id, codigo: resumo.codigo, resultados });
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+// ------------------------------------------------------------
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
   console.log(`Drive configurado: ${drive.estaConfigurado()}`);
