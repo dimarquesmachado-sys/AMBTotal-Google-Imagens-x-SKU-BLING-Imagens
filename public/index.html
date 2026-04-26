@@ -85,6 +85,12 @@
   <div class="card">
     <div class="toolbar">
       <input type="text" id="busca" placeholder="🔎 Buscar SKU..." oninput="filtrar()">
+      <select id="ordenacao" onchange="filtrar()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white; font-size: 13px; cursor: pointer;">
+        <option value="alfa">🔤 A-Z (alfabética)</option>
+        <option value="nova">🆕 Mais novas primeiro</option>
+        <option value="antiga">📅 Mais antigas primeiro</option>
+        <option value="modif-nova">✏️ Modificadas recentemente</option>
+      </select>
       <span class="info" id="info">Carregando...</span>
     </div>
     <div class="toolbar-row">
@@ -174,10 +180,26 @@
       }
     }
 
+    function aplicarOrdenacao(lista) {
+      const modo = (document.getElementById('ordenacao') || {}).value || 'alfa';
+      const arr = [...lista];
+      if (modo === 'nova') {
+        arr.sort((a, b) => (b.createdTime || '').localeCompare(a.createdTime || ''));
+      } else if (modo === 'antiga') {
+        arr.sort((a, b) => (a.createdTime || '').localeCompare(b.createdTime || ''));
+      } else if (modo === 'modif-nova') {
+        arr.sort((a, b) => (b.modifiedTime || '').localeCompare(a.modifiedTime || ''));
+      } else {
+        arr.sort((a, b) => a.sku.localeCompare(b.sku, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+      }
+      return arr;
+    }
+
     function renderizar() {
       const div = document.getElementById('lista');
       const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
-      const filtradas = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
+      const buscadas = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
+      const filtradas = aplicarOrdenacao(buscadas);
 
       if (pastas.length === 0) { div.innerHTML = `<div class="vazio">Nenhuma pasta de SKU encontrada na pasta-mãe.</div>`; return; }
       if (filtradas.length === 0) { div.innerHTML = `<div class="vazio">Nenhum SKU corresponde a "${escapeHtml(termo)}".</div>`; return; }
@@ -415,7 +437,8 @@
 
     function aplicarFiltro() {
       const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
-      return termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
+      const buscadas = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
+      return aplicarOrdenacao(buscadas);
     }
     function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
     function escapeAttr(s) { return String(s == null ? '' : s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
