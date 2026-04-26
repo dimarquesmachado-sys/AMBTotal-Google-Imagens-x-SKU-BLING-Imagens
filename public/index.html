@@ -5,47 +5,29 @@
   <title>AMB Imagens Auto — Drive → Bling</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f5f7; color: #333; padding: 20px;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f7; color: #333; padding: 20px; }
     h1 { color: #1d72b8; margin-bottom: 8px; }
     .sub { color: #888; margin-bottom: 20px; font-size: 14px; }
-    .card {
-      background: #fff; border-radius: 8px; padding: 18px;
-      margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    }
+    .card { background: #fff; border-radius: 8px; padding: 18px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     .status-row { display: flex; gap: 30px; align-items: center; flex-wrap: wrap; }
     .status-row .item { font-size: 15px; }
     .ok { color: #28a745; font-weight: bold; }
     .err { color: #dc3545; font-weight: bold; }
     .warn { color: #f0ad4e; font-weight: bold; }
-    .btn {
-      color: white; border: none; padding: 7px 12px;
-      border-radius: 5px; cursor: pointer;
-      text-decoration: none; display: inline-block; font-size: 13px;
-      transition: filter 0.15s; white-space: nowrap;
-    }
+    .btn { color: white; border: none; padding: 7px 12px; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 13px; transition: filter 0.15s; white-space: nowrap; }
     .btn:hover:not(:disabled) { filter: brightness(0.9); }
     .btn:disabled { background: #aaa !important; cursor: not-allowed; }
     .btn-azul { background: #1d72b8; }
     .btn-cinza { background: #6c757d; }
     .btn-verde { background: #28a745; }
     .btn-roxo { background: #6f42c1; }
-    .btn-rosa { background: #e83e8c; }
     .btn-laranja { background: #fd7e14; }
     .btn-sm { padding: 4px 9px; font-size: 12px; }
     .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .toolbar input[type="text"] {
-      flex: 1; min-width: 220px; padding: 8px 12px; font-size: 14px;
-      border: 1px solid #ccc; border-radius: 5px;
-    }
+    .toolbar input[type="text"] { flex: 1; min-width: 220px; padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; }
     .toolbar input[type="text"]:focus { outline: none; border-color: #1d72b8; }
     .info { font-size: 13px; color: #666; }
-    .toolbar-row {
-      display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;
-      align-items: center;
-    }
+    .toolbar-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
     .toolbar-row .label { font-size: 12px; color: #888; font-weight: 600; margin-right: 4px; }
     .divisor { width: 1px; background: #ddd; height: 24px; margin: 0 4px; }
     table { width: 100%; border-collapse: collapse; }
@@ -55,59 +37,29 @@
     tr:hover { background: #fafbfc; }
     tr.selected:hover { background: #d6ebfa; }
     .checkbox-col { width: 36px; text-align: center; }
-    .acoes-col { width: 240px; }
+    .acoes-col { width: 270px; }
     .num-col { width: 60px; text-align: center; }
     .acoes-cell { display: flex; gap: 3px; flex-wrap: wrap; }
     .loading, .vazio { text-align: center; padding: 40px; color: #999; }
-    .badge {
-      display: inline-block; padding: 2px 8px; border-radius: 12px;
-      font-size: 11px; font-weight: 600;
-    }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
     .badge-ok { background: #d4edda; color: #155724; }
     .badge-err { background: #f8d7da; color: #721c24; }
     .badge-warn { background: #fff3cd; color: #856404; }
     .badge-cinza { background: #e9ecef; color: #6c757d; }
 
-    /* Modal */
-    .modal-overlay {
-      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5); z-index: 999;
-      align-items: center; justify-content: center; padding: 20px;
-    }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; padding: 20px; }
     .modal-overlay.show { display: flex; }
-    .modal {
-      background: #fff; border-radius: 8px; max-width: 800px; width: 100%;
-      max-height: 90vh; overflow: auto; padding: 20px;
-    }
+    .modal { background: #fff; border-radius: 8px; max-width: 800px; width: 100%; max-height: 90vh; overflow: auto; padding: 20px; }
     .modal h3 { color: #1d72b8; margin-bottom: 12px; }
-    .modal textarea {
-      width: 100%; min-height: 180px; padding: 10px;
-      font-family: monospace; font-size: 12px;
-      border: 1px solid #ddd; border-radius: 5px;
-      resize: vertical;
-    }
-    .modal .img-list {
-      margin: 10px 0; max-height: 240px; overflow: auto;
-      border: 1px solid #eee; border-radius: 5px; padding: 8px;
-      font-size: 12px;
-    }
-    .modal .img-list .item {
-      padding: 4px 0; border-bottom: 1px solid #f0f0f0;
-      display: flex; justify-content: space-between; gap: 10px;
-    }
+    .modal textarea { width: 100%; min-height: 180px; padding: 10px; font-family: monospace; font-size: 12px; border: 1px solid #ddd; border-radius: 5px; resize: vertical; }
+    .modal .img-list { margin: 10px 0; max-height: 240px; overflow: auto; border: 1px solid #eee; border-radius: 5px; padding: 8px; font-size: 12px; }
+    .modal .img-list .item { padding: 4px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; gap: 10px; }
     .modal .img-list .item:last-child { border: 0; }
     .modal .img-list .item .nome { font-weight: 600; min-width: 60px; }
     .modal .img-list .item .url { color: #666; font-family: monospace; word-break: break-all; }
     .modal .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
 
-    /* Toast */
-    #toast {
-      position: fixed; bottom: 20px; right: 20px; max-width: 360px;
-      padding: 12px 16px; border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      font-size: 13px; color: white; z-index: 1000;
-      transform: translateX(400px); transition: transform 0.25s;
-    }
+    #toast { position: fixed; bottom: 20px; right: 20px; max-width: 360px; padding: 12px 16px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 13px; color: white; z-index: 1000; transform: translateX(400px); transition: transform 0.25s; }
     #toast.show { transform: translateX(0); }
     #toast.ok { background: #28a745; }
     #toast.err { background: #dc3545; }
@@ -118,17 +70,13 @@
   <h1>AMB Imagens Auto</h1>
   <div class="sub">Sincroniza imagens do Google Drive para produtos no Bling</div>
 
-  <!-- Card de status -->
   <div class="card">
-    <div id="status">
-      <div class="loading">Carregando status...</div>
-    </div>
+    <div id="status"><div class="loading">Carregando status...</div></div>
     <div style="margin-top: 12px;">
       <button class="btn btn-cinza" onclick="recarregarPastas()">🔄 Recarregar pastas do Drive</button>
     </div>
   </div>
 
-  <!-- Card de toolbar -->
   <div class="card">
     <div class="toolbar">
       <input type="text" id="busca" placeholder="🔎 Buscar SKU..." oninput="filtrar()">
@@ -140,7 +88,7 @@
       <button class="btn btn-verde btn-sm" id="btnProcSel" onclick="processarSelecionados()" disabled>Processar</button>
       <button class="btn btn-roxo btn-sm" id="btnEnvSel" onclick="enviarSelecionados()" disabled>Enviar p/ Bling</button>
       <span class="divisor"></span>
-      <button class="btn btn-laranja btn-sm" id="btnTudoSel" onclick="tudoSelecionados()" disabled>⚡ Tudo agora</button>
+      <button class="btn btn-laranja btn-sm" id="btnTudoSel" onclick="tudoSelecionados()" disabled>⚡ Enviar direto</button>
     </div>
     <div class="toolbar-row">
       <span class="label">Todos (filtro atual):</span>
@@ -148,18 +96,14 @@
       <button class="btn btn-verde btn-sm" onclick="processarTodos()">Processar</button>
       <button class="btn btn-roxo btn-sm" onclick="enviarTodos()">Enviar p/ Bling</button>
       <span class="divisor"></span>
-      <button class="btn btn-laranja btn-sm" onclick="tudoTodos()">⚡ Tudo agora</button>
+      <button class="btn btn-laranja btn-sm" onclick="tudoTodos()">⚡ Enviar direto</button>
     </div>
   </div>
 
-  <!-- Tabela -->
   <div class="card" style="padding: 0; overflow: hidden;">
-    <div id="lista">
-      <div class="loading">Aguardando...</div>
-    </div>
+    <div id="lista"><div class="loading">Aguardando...</div></div>
   </div>
 
-  <!-- Modal -->
   <div class="modal-overlay" id="modal" onclick="if (event.target === this) fecharModal()">
     <div class="modal">
       <h3 id="modalTitulo">URLs do SKU</h3>
@@ -170,16 +114,12 @@
     </div>
   </div>
 
-  <!-- Toast -->
   <div id="toast"></div>
 
   <script>
     let pastas = [];
     let selecionados = new Set();
 
-    // ---------------------------------------------------
-    // Toast
-    // ---------------------------------------------------
     function toast(msg, tipo = 'info') {
       const el = document.getElementById('toast');
       el.className = '';
@@ -189,9 +129,6 @@
       setTimeout(() => el.classList.remove('show'), 3500);
     }
 
-    // ---------------------------------------------------
-    // Status / Pastas
-    // ---------------------------------------------------
     async function carregarStatus() {
       const div = document.getElementById('status');
       try {
@@ -219,15 +156,10 @@
       info.textContent = 'Carregando...';
       selecionados.clear();
       atualizarBotaoSel();
-
       try {
         const r = await fetch('/api/pastas');
         const d = await r.json();
-        if (d.erro) {
-          div.innerHTML = `<div class="vazio err">Erro: ${d.erro}</div>`;
-          info.textContent = '';
-          return;
-        }
+        if (d.erro) { div.innerHTML = `<div class="vazio err">Erro: ${d.erro}</div>`; info.textContent = ''; return; }
         pastas = (d.pastas || []).map(p => ({ ...p, bling: null, urls: null, envio: null }));
         info.textContent = `${pastas.length} pasta(s) no Drive`;
         renderizar();
@@ -237,22 +169,13 @@
       }
     }
 
-    // ---------------------------------------------------
-    // Tabela
-    // ---------------------------------------------------
     function renderizar() {
       const div = document.getElementById('lista');
       const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
       const filtradas = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
 
-      if (pastas.length === 0) {
-        div.innerHTML = `<div class="vazio">Nenhuma pasta de SKU encontrada na pasta-mãe.</div>`;
-        return;
-      }
-      if (filtradas.length === 0) {
-        div.innerHTML = `<div class="vazio">Nenhum SKU corresponde a "${escapeHtml(termo)}".</div>`;
-        return;
-      }
+      if (pastas.length === 0) { div.innerHTML = `<div class="vazio">Nenhuma pasta de SKU encontrada na pasta-mãe.</div>`; return; }
+      if (filtradas.length === 0) { div.innerHTML = `<div class="vazio">Nenhum SKU corresponde a "${escapeHtml(termo)}".</div>`; return; }
 
       let html = `
         <table>
@@ -273,9 +196,7 @@
         const sel = selecionados.has(p.sku);
         html += `
           <tr class="${sel ? 'selected' : ''}">
-            <td class="checkbox-col">
-              <input type="checkbox" ${sel ? 'checked' : ''} onclick="toggleSel('${escapeAttr(p.sku)}', this.checked)">
-            </td>
+            <td class="checkbox-col"><input type="checkbox" ${sel ? 'checked' : ''} onclick="toggleSel('${escapeAttr(p.sku)}', this.checked)"></td>
             <td><strong>${escapeHtml(p.sku)}</strong></td>
             <td class="num-col">${p.qtdImagens}</td>
             <td>${renderBling(p.bling)}</td>
@@ -286,7 +207,7 @@
                 <button class="btn btn-azul btn-sm" onclick="verificarUm('${escapeAttr(p.sku)}', this)">Verif.</button>
                 <button class="btn btn-verde btn-sm" onclick="processarUm('${escapeAttr(p.sku)}', this)">Proc.</button>
                 <button class="btn btn-roxo btn-sm" onclick="enviarUm('${escapeAttr(p.sku)}', this)">Enviar</button>
-                <button class="btn btn-laranja btn-sm" onclick="tudoUm('${escapeAttr(p.sku)}', this)">⚡ Tudo</button>
+                <button class="btn btn-laranja btn-sm" onclick="tudoUm('${escapeAttr(p.sku)}', this)">⚡ Direto</button>
               </div>
             </td>
           </tr>
@@ -307,56 +228,41 @@
       if (!p.urls) return `<span class="badge badge-cinza">⏳ não proc.</span>`;
       if (p.urls.erro) return `<span class="badge badge-warn">⚠ ${escapeHtml(p.urls.erro)}</span>`;
       if (p.urls.aviso) return `<span class="badge badge-warn">⚠ ${escapeHtml(p.urls.aviso)}</span>`;
-      return `<span class="badge badge-ok">✅ ${p.urls.qtd}</span>
-        <button class="btn btn-cinza btn-sm" onclick="verUrls('${escapeAttr(p.sku)}')">Ver</button>`;
+      return `<span class="badge badge-ok">✅ ${p.urls.qtd}</span> <button class="btn btn-cinza btn-sm" onclick="verUrls('${escapeAttr(p.sku)}')">Ver</button>`;
     }
 
     function renderEnvio(e) {
       if (!e) return `<span class="badge badge-cinza">⏳ não enviado</span>`;
-      if (e.erro) return `<span class="badge badge-err" title="${escapeAttr(e.erro)}">❌ ${escapeHtml(e.erro.slice(0, 50))}${e.erro.length > 50 ? '...' : ''}</span>`;
+      if (e.erro) return `<span class="badge badge-err" title="${escapeAttr(e.erro)}">❌ ${escapeHtml(e.erro.slice(0, 60))}${e.erro.length > 60 ? '...' : ''}</span>`;
       if (e.ok) {
         const dt = e.enviadoEm ? new Date(e.enviadoEm) : null;
         const hora = dt ? dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-        return `<span class="badge badge-ok">✅ ${e.qtdEnviadas} imgs ${hora}</span>`;
+        return `<span class="badge badge-ok">✅ ${e.qtdConfirmadas || e.qtdEnviadas} imgs ${hora}</span>`;
       }
       return `<span class="badge badge-cinza">?</span>`;
     }
 
-    // ---------------------------------------------------
     function filtrar() { renderizar(); }
-
-    function toggleSel(sku, checked) {
-      if (checked) selecionados.add(sku); else selecionados.delete(sku);
-      atualizarBotaoSel(); renderizar();
-    }
-
+    function toggleSel(sku, c) { if (c) selecionados.add(sku); else selecionados.delete(sku); atualizarBotaoSel(); renderizar(); }
     function toggleAll(cb) {
       const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
-      const filtradas = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
-      if (cb.checked) filtradas.forEach(p => selecionados.add(p.sku));
-      else filtradas.forEach(p => selecionados.delete(p.sku));
+      const f = termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
+      if (cb.checked) f.forEach(p => selecionados.add(p.sku)); else f.forEach(p => selecionados.delete(p.sku));
       atualizarBotaoSel(); renderizar();
     }
-
     function atualizarBotaoSel() {
       const n = selecionados.size;
       document.getElementById('qtdSel1').textContent = n;
-      const ids = ['btnVerifSel', 'btnProcSel', 'btnEnvSel', 'btnTudoSel'];
-      ids.forEach(id => { document.getElementById(id).disabled = (n === 0); });
+      ['btnVerifSel', 'btnProcSel', 'btnEnvSel', 'btnTudoSel'].forEach(id => { document.getElementById(id).disabled = (n === 0); });
     }
 
-    // ---------------------------------------------------
-    // VERIFICAR (Bling - status)
-    // ---------------------------------------------------
+    // VERIFICAR
     async function verificarSkus(skus, btnEl) {
       if (!skus || skus.length === 0) return;
       const orig = btnEl ? btnEl.textContent : null;
       if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
       try {
-        const r = await fetch('/api/verificar-bling', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ skus })
-        });
+        const r = await fetch('/api/verificar-bling', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ skus }) });
         const d = await r.json();
         if (d.erro) { toast('Erro: ' + d.erro, 'err'); return; }
         for (const sku of skus) {
@@ -367,27 +273,21 @@
       } catch (e) { toast('Erro: ' + e.message, 'err'); }
       finally { if (btnEl && orig) { btnEl.disabled = false; btnEl.textContent = orig; } }
     }
-
     function verificarUm(sku, btn) { verificarSkus([sku], btn); }
     function verificarSelecionados() { verificarSkus(Array.from(selecionados), document.getElementById('btnVerifSel')); }
     function verificarTodos() {
       const lista = aplicarFiltro();
-      if (lista.length === 0) { toast('Nenhum SKU para verificar', 'err'); return; }
+      if (lista.length === 0) { toast('Nenhum SKU', 'err'); return; }
       verificarSkus(lista.map(p => p.sku));
     }
 
-    // ---------------------------------------------------
-    // PROCESSAR (Drive - publicar + URLs)
-    // ---------------------------------------------------
+    // PROCESSAR
     async function processarItems(items, btnEl) {
       if (!items || items.length === 0) return;
       const orig = btnEl ? btnEl.textContent : null;
       if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
       try {
-        const r = await fetch('/api/processar', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items })
-        });
+        const r = await fetch('/api/processar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) });
         const d = await r.json();
         if (d.erro) { toast('Erro: ' + d.erro, 'err'); return; }
         for (const it of items) {
@@ -399,7 +299,6 @@
       } catch (e) { toast('Erro: ' + e.message, 'err'); }
       finally { if (btnEl && orig) { btnEl.disabled = false; btnEl.textContent = orig; } }
     }
-
     function processarUm(sku, btn) {
       const p = pastas.find(x => x.sku === sku);
       if (!p) return;
@@ -411,25 +310,19 @@
     }
     function processarTodos() {
       const lista = aplicarFiltro();
-      if (lista.length === 0) { toast('Nenhum SKU pra processar', 'err'); return; }
+      if (lista.length === 0) { toast('Nenhum SKU', 'err'); return; }
       if (lista.length > 30 && !confirm(`Processar ${lista.length} SKUs no Drive. Continuar?`)) return;
       processarItems(lista.map(p => ({ sku: p.sku, pastaId: p.pastaId })));
     }
 
-    // ---------------------------------------------------
-    // ENVIAR (Bling - atualiza imagens)
-    // ---------------------------------------------------
+    // ENVIAR
     async function enviarItems(items, btnEl) {
       if (!items || items.length === 0) return;
-      // Filtra os que tem URLs prontas
       const validos = items.filter(it => {
         const p = pastas.find(x => x.sku === it.sku);
         return p && p.urls && p.urls.urls && p.urls.urls.length > 0;
       });
-      if (validos.length === 0) {
-        toast('Nenhum SKU com URLs processadas. Use "Tudo agora" ou "Processar" antes.', 'err');
-        return;
-      }
+      if (validos.length === 0) { toast('Sem URLs processadas. Use ⚡ Enviar direto ou Processar antes.', 'err'); return; }
       const corpo = validos.map(it => {
         const p = pastas.find(x => x.sku === it.sku);
         return { sku: p.sku, urls: p.urls.urls };
@@ -437,10 +330,7 @@
       const orig = btnEl ? btnEl.textContent : null;
       if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
       try {
-        const r = await fetch('/api/enviar-bling', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: corpo })
-        });
+        const r = await fetch('/api/enviar-bling', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: corpo }) });
         const d = await r.json();
         if (d.erro) { toast('Erro: ' + d.erro, 'err'); return; }
         for (const it of corpo) {
@@ -454,30 +344,17 @@
       } catch (e) { toast('Erro: ' + e.message, 'err'); }
       finally { if (btnEl && orig) { btnEl.disabled = false; btnEl.textContent = orig; } }
     }
-
     function enviarUm(sku, btn) { enviarItems([{ sku }], btn); }
-    function enviarSelecionados() {
-      const items = Array.from(selecionados).map(sku => ({ sku }));
-      enviarItems(items, document.getElementById('btnEnvSel'));
-    }
-    function enviarTodos() {
-      const lista = aplicarFiltro();
-      const items = lista.map(p => ({ sku: p.sku }));
-      enviarItems(items);
-    }
+    function enviarSelecionados() { enviarItems(Array.from(selecionados).map(sku => ({ sku })), document.getElementById('btnEnvSel')); }
+    function enviarTodos() { enviarItems(aplicarFiltro().map(p => ({ sku: p.sku }))); }
 
-    // ---------------------------------------------------
-    // TUDO AGORA (Drive + Bling em sequencia)
-    // ---------------------------------------------------
+    // TUDO DIRETO (Drive + Bling)
     async function tudoItems(items, btnEl) {
       if (!items || items.length === 0) return;
       const orig = btnEl ? btnEl.textContent : null;
       if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
       try {
-        const r = await fetch('/api/processar-e-enviar', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items })
-        });
+        const r = await fetch('/api/processar-e-enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) });
         const d = await r.json();
         if (d.erro) { toast('Erro: ' + d.erro, 'err'); return; }
         for (const it of items) {
@@ -487,7 +364,6 @@
           if (res.processamento) p.urls = res.processamento;
           if (res.envio) p.envio = res.envio;
           if (res.erro) {
-            // Erro no processamento - urls e envio ficam como erro
             if (!p.urls) p.urls = { erro: res.erro };
             if (!p.envio) p.envio = { erro: res.erro };
           }
@@ -495,11 +371,10 @@
         renderizar();
         const ok = Object.values(d.resultados).filter(x => x && x.envio && x.envio.ok).length;
         const err = items.length - ok;
-        toast(`Tudo agora: ${ok} concluído(s), ${err} com problema`, err ? 'err' : 'ok');
+        toast(`Direto: ${ok} concluído(s), ${err} com problema`, err ? 'err' : 'ok');
       } catch (e) { toast('Erro: ' + e.message, 'err'); }
       finally { if (btnEl && orig) { btnEl.disabled = false; btnEl.textContent = orig; } }
     }
-
     function tudoUm(sku, btn) {
       const p = pastas.find(x => x.sku === sku);
       if (!p) return;
@@ -507,69 +382,43 @@
     }
     function tudoSelecionados() {
       const items = pastas.filter(p => selecionados.has(p.sku)).map(p => ({ sku: p.sku, pastaId: p.pastaId }));
-      if (items.length > 20 && !confirm(`Vai processar e enviar ${items.length} SKUs pro Bling. Continuar?`)) return;
+      if (items.length > 20 && !confirm(`Vai processar e enviar ${items.length} SKUs. Continuar?`)) return;
       tudoItems(items, document.getElementById('btnTudoSel'));
     }
     function tudoTodos() {
       const lista = aplicarFiltro();
-      if (lista.length === 0) { toast('Nenhum SKU pra processar', 'err'); return; }
-      if (lista.length > 20 && !confirm(`Vai processar e enviar ${lista.length} SKUs pro Bling. Continuar?`)) return;
+      if (lista.length === 0) { toast('Nenhum SKU', 'err'); return; }
+      if (lista.length > 20 && !confirm(`Vai processar e enviar ${lista.length} SKUs. Continuar?`)) return;
       tudoItems(lista.map(p => ({ sku: p.sku, pastaId: p.pastaId })));
     }
 
-    // ---------------------------------------------------
-    // Modal URLs
-    // ---------------------------------------------------
     function verUrls(sku) {
       const p = pastas.find(x => x.sku === sku);
       if (!p || !p.urls || !p.urls.urls) { toast('SKU sem URLs', 'err'); return; }
       document.getElementById('modalTitulo').textContent = `URLs do SKU ${sku} — ${p.urls.qtd} imagens`;
       const conc = p.urls.urlsConcatenadas || (p.urls.urls || []).join('|');
       const nomes = p.urls.nomes || [];
-
-      let html = `<p style="font-size: 13px; color: #666; margin-bottom: 8px;">Imagens em ordem (1, 2, 3...):</p>`;
-      html += `<div class="img-list">`;
+      let html = `<p style="font-size: 13px; color: #666; margin-bottom: 8px;">Imagens em ordem (1, 2, 3...):</p><div class="img-list">`;
       (p.urls.urls || []).forEach((u, i) => {
-        html += `
-          <div class="item">
-            <span class="nome">${escapeHtml(nomes[i] || (i + 1) + '.jpg')}</span>
-            <span class="url"><a href="${escapeAttr(u)}" target="_blank">${escapeHtml(u)}</a></span>
-          </div>
-        `;
+        html += `<div class="item"><span class="nome">${escapeHtml(nomes[i] || (i + 1) + '.jpg')}</span><span class="url"><a href="${escapeAttr(u)}" target="_blank">${escapeHtml(u)}</a></span></div>`;
       });
-      html += `</div>`;
-      html += `<p style="font-size: 13px; color: #666; margin: 12px 0 6px;">URLs concatenadas com "|" (formato Bling):</p>`;
-      html += `<textarea readonly>${escapeHtml(conc)}</textarea>`;
+      html += `</div><p style="font-size: 13px; color: #666; margin: 12px 0 6px;">URLs concatenadas com "|":</p><textarea readonly>${escapeHtml(conc)}</textarea>`;
       document.getElementById('modalConteudo').innerHTML = html;
       document.getElementById('modal').classList.add('show');
     }
-
     function fecharModal() { document.getElementById('modal').classList.remove('show'); }
 
-    // ---------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------
     function aplicarFiltro() {
       const termo = (document.getElementById('busca').value || '').toLowerCase().trim();
       return termo ? pastas.filter(p => p.sku.toLowerCase().includes(termo)) : pastas;
     }
-    function escapeHtml(s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-    function escapeAttr(s) {
-      return String(s == null ? '' : s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    }
+    function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+    function escapeAttr(s) { return String(s == null ? '' : s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
-    // Boot
     (async () => {
       const s = await carregarStatus();
       if (s.drive) await recarregarPastas();
-      else {
-        document.getElementById('lista').innerHTML = `<div class="vazio">Configure o Drive primeiro.</div>`;
-        document.getElementById('info').textContent = '';
-      }
+      else { document.getElementById('lista').innerHTML = `<div class="vazio">Configure o Drive primeiro.</div>`; document.getElementById('info').textContent = ''; }
     })();
   </script>
 </body>
