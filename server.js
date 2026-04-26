@@ -66,9 +66,22 @@ app.get('/api/pastas', async (req, res) => {
     const resultados = await Promise.all(subpastas.map(async (sub) => {
       try {
         const arquivos = await drive.listarImagens(sub.id);
-        return { sku: sub.name, pastaId: sub.id, qtdImagens: arquivos.length };
+        return {
+          sku: sub.name,
+          pastaId: sub.id,
+          qtdImagens: arquivos.length,
+          createdTime: sub.createdTime,
+          modifiedTime: sub.modifiedTime
+        };
       } catch (e) {
-        return { sku: sub.name, pastaId: sub.id, qtdImagens: 0, erro: e.message };
+        return {
+          sku: sub.name,
+          pastaId: sub.id,
+          qtdImagens: 0,
+          erro: e.message,
+          createdTime: sub.createdTime,
+          modifiedTime: sub.modifiedTime
+        };
       }
     }));
     resultados.sort((a, b) => a.sku.localeCompare(b.sku, 'pt-BR', { numeric: true, sensitivity: 'base' }));
