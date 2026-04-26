@@ -60,7 +60,7 @@ async function chamarBling(method, path, body, _tentativa = 1) {
     if (resp.status === 503) {
       throw new Error(`Bling fora do ar (503). Tente novamente em alguns minutos.`);
     }
-    throw new Error(`Bling ${method} ${path} ${resp.status}: ${txt.slice(0, 300)}`);
+    throw new Error(`Bling ${method} ${path} ${resp.status}: ${txt.slice(0, 600)}`);
   }
 
   const txt = await resp.text();
@@ -118,16 +118,14 @@ async function atualizarImagens(idProduto, urls) {
   // delay para nao estourar 3 req/s do Bling
   await new Promise(r => setTimeout(r, 400));
 
-  // 2) Body MINIMAL ABSOLUTO - sugestao da comunidade
-  // Inclui nome+codigo+preco para o Bling "reconhecer" como atualizacao valida
-  // midia: APENAS imagens.externa (sem video, internas, imagensURL)
+  // 2) Body MINIMAL ABSOLUTO - APENAS midia.imagens.externa
   // ATENCAO: Bling usa SINGULAR "externa" no PUT/PATCH (e nao "externas" plural!)
-  // Descoberta via DevTools comparando com a request da UI do Bling
+  // Descoberta via DevTools comparando com a request da UI do Bling.
+  // NAO incluimos nome/codigo/preco para evitar revalidacao do produto inteiro
+  // (o Bling barra com erro 400 se algum campo aninhado como estrutura.tipoEstoque
+  // estiver fora do padrao do schema PUT)
   const externasNovas = (urls || []).map(link => ({ link }));
   const bodyPatch = {
-    nome: produtoAntes.nome,
-    codigo: produtoAntes.codigo,
-    preco: produtoAntes.preco,
     midia: {
       imagens: {
         externa: externasNovas  // SINGULAR - bug/inconsistencia da API do Bling
