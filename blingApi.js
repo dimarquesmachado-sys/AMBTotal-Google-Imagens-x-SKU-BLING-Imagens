@@ -1,11 +1,13 @@
 const blingAuth = require('./blingAuth');
 
 const BLING_API = 'https://api.bling.com.br/Api/v3';
+const MAX_TENTATIVAS_5XX = 3;
 
 // ------------------------------------------------------------
 // Helper: faz request ao Bling com auto-renovacao de token
+// e retry em caso de instabilidade (5xx) do Bling
 // ------------------------------------------------------------
-async function chamarBling(method, path, body) {
+async function chamarBling(method, path, body, _tentativa = 1) {
   let token = await blingAuth.getToken();
   const opts = {
     method,
@@ -18,8 +20,21 @@ async function chamarBling(method, path, body) {
     opts.body = JSON.stringify(body);
   }
 
-  let resp = await fetch(`${BLING_API}${path}`, opts);
+  let resp;
+  try {
+    resp = await fetch(`${BLING_API}${path}`, opts);
+  } catch (err) {
+    // erro de rede - tenta de novo
+    if (_tentativa < MAX_TENTATIVAS_5XX) {
+      const espera = 1500 * _tentativa;
+      console.log(`[Bling] Erro de rede em ${method} ${path}. Tentativa ${_tentativa}/${MAX_TENTATIVAS_5XX}, esperando ${espera}ms...`);
+      await new Promise(r => setTimeout(r, espera));
+      return chamarBling(method, path, body, _tentativa + 1);
+    }
+    throw err;
+  }
 
+  // Token expirado: renova e tenta de novo
   if (resp.status === 401) {
     await blingAuth.renovarToken();
     token = await blingAuth.getToken();
@@ -27,9 +42,21 @@ async function chamarBling(method, path, body) {
     resp = await fetch(`${BLING_API}${path}`, opts);
   }
 
+  // Bling instavel (5xx): tenta de novo com pausa
+  if (resp.status >= 500 && resp.status < 600 && _tentativa < MAX_TENTATIVAS_5XX) {
+    const espera = 2000 * _tentativa;
+    console.log(`[Bling] ${method} ${path} retornou ${resp.status}. Tentativa ${_tentativa}/${MAX_TENTATIVAS_5XX}, esperando ${espera}ms...`);
+    await new Promise(r => setTimeout(r, espera));
+    return chamarBling(method, path, body, _tentativa + 1);
+  }
+
   if (!resp.ok) {
     const txt = await resp.text();
-    throw new Error(`Bling ${method} ${path} ${resp.status}: ${txt}`);
+    // mensagem mais amigavel para 503
+    if (resp.status === 503) {
+      throw new Error(`Bling fora do ar (503). Tente novamente em alguns minutos.`);
+    }
+    throw new Error(`Bling ${method} ${path} ${resp.status}: ${txt.slice(0, 300)}`);
   }
 
   const txt = await resp.text();
