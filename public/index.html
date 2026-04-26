@@ -217,7 +217,7 @@
           <tr class="${sel ? 'selected' : ''}">
             <td class="checkbox-col"><input type="checkbox" ${sel ? 'checked' : ''} onclick="toggleSel('${escapeAttr(p.sku)}', this.checked)"></td>
             <td><strong>${escapeHtml(p.sku)}</strong></td>
-            <td class="num-col">${p.qtdImagens}</td>
+            <td class="num-col">${p.qtdImagens > 12 ? `<span style="color:#e67e22; font-weight:700;" title="Excede o limite do Bling (12). Apenas as 12 primeiras serão enviadas.">⚠️ ${p.qtdImagens}</span>` : p.qtdImagens}</td>
             <td>${renderBling(p.bling)}</td>
             <td>${renderUrls(p)}</td>
             <td>${renderEnvio(p.envio)}</td>
