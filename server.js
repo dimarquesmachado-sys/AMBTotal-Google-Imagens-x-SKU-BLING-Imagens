@@ -235,7 +235,6 @@ app.post('/api/processar-e-enviar', async (req, res) => {
 
 // ------------------------------------------------------------
 // /api/debug-produto/:codigo - util pra debug
-// Retorna dados completos do produto pelo SKU
 // ------------------------------------------------------------
 app.get('/api/debug-produto/:codigo', async (req, res) => {
   try {
@@ -249,7 +248,7 @@ app.get('/api/debug-produto/:codigo', async (req, res) => {
       id: resumo.id,
       codigo: resumo.codigo,
       nome: resumo.nome,
-      imagens: completo ? completo.imagens : null,
+      midia: completo ? completo.midia : null,
       camposDoProduto: completo ? Object.keys(completo) : []
     });
   } catch (e) {
