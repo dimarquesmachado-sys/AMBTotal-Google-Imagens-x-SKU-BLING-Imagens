@@ -95,13 +95,15 @@ async function buscarProdutoCompleto(idProduto) {
 }
 
 // ------------------------------------------------------------
-// Atualiza imagens externas de um produto usando PATCH
-// PATCH permite atualizar APENAS os campos enviados
-// (sem precisar mandar o produto inteiro)
+// Atualiza imagens externas de um produto usando PATCH MINIMAL
+// Estrategia sugerida pelo ChatGPT/comunidade:
+// PATCH com APENAS nome+codigo+preco + midia enxuto
+// (SEM video, SEM internas, SEM imagensURL)
+// Se nem isso funcionar, eh limitacao real da API v3
 // Bling tem limite de 3 req/s - usa delay entre chamadas
 // ------------------------------------------------------------
 async function atualizarImagens(idProduto, urls) {
-  console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs (PATCH) ===`);
+  console.log(`[Bling] === atualizarImagens id=${idProduto}, ${urls.length} URLs (PATCH MINIMAL) ===`);
 
   // 1) Estado antes (so pra log e verificacao)
   const produtoAntes = await buscarProdutoCompleto(idProduto);
@@ -110,15 +112,20 @@ async function atualizarImagens(idProduto, urls) {
   const externasAntes = ((produtoAntes.midia || {}).imagens || {}).externas || [];
   const internasAntes = ((produtoAntes.midia || {}).imagens || {}).internas || [];
 
-  console.log(`[Bling] Produto: id=${produtoAntes.id}, nome="${produtoAntes.nome}", codigo="${produtoAntes.codigo}"`);
+  console.log(`[Bling] Produto: id=${produtoAntes.id}, nome="${produtoAntes.nome}", codigo="${produtoAntes.codigo}", preco=${produtoAntes.preco}`);
   console.log(`[Bling] Imagens ANTES: externas=${externasAntes.length}, internas=${internasAntes.length}`);
 
   // delay para nao estourar 3 req/s do Bling
   await new Promise(r => setTimeout(r, 400));
 
-  // 2) Body MINIMO - so o que precisa ser alterado
+  // 2) Body MINIMAL ABSOLUTO - sugestao da comunidade
+  // Inclui nome+codigo+preco para o Bling "reconhecer" como atualizacao valida
+  // midia: APENAS imagens.externas (sem video, internas, imagensURL)
   const externasNovas = (urls || []).map(link => ({ link }));
   const bodyPatch = {
+    nome: produtoAntes.nome,
+    codigo: produtoAntes.codigo,
+    preco: produtoAntes.preco,
     midia: {
       imagens: {
         externas: externasNovas
@@ -126,7 +133,8 @@ async function atualizarImagens(idProduto, urls) {
     }
   };
 
-  console.log(`[Bling] PATCH body:`, JSON.stringify(bodyPatch).slice(0, 600));
+  console.log(`[Bling] PATCH body keys: ${Object.keys(bodyPatch).join(', ')}`);
+  console.log(`[Bling] PATCH body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
 
   // 3) Faz PATCH
   const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
@@ -148,7 +156,7 @@ async function atualizarImagens(idProduto, urls) {
 
   if (externasDepois.length !== urls.length) {
     throw new Error(
-      `Bling aceitou o PATCH mas nao atualizou as imagens. ` +
+      `Bling aceitou o PATCH MINIMAL mas nao atualizou as imagens. ` +
       `Esperado: ${urls.length} externas, atual: ${externasDepois.length}.`
     );
   }
