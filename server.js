@@ -10,8 +10,6 @@ app.use(express.static('public'));
 const PORT = process.env.PORT || 3000;
 
 // ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
 function extrairNumero(nome) {
   const base = String(nome || '').replace(/\.[^.]+$/, '');
   const matches = base.match(/\d+/g);
@@ -38,31 +36,26 @@ app.get('/api/status', async (req, res) => {
 // OAuth Bling
 // ------------------------------------------------------------
 app.get('/auth/bling', (req, res) => {
+  try { res.redirect(blingAuth.gerarUrlAutorizacao()); }
+  catch (e) { res.status(500).send(`<h2>Erro:</h2><pre>${e.message}</pre>`); }
+});
+
+app.get('/bling/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error) return res.send(`<h2>Erro: ${error}</h2><a href="/">voltar</a>`);
   try {
-    const url = blingAuth.gerarUrlAutorizacao();
-    res.redirect(url);
+    await blingAuth.trocarCodigoPorToken(code);
+    res.send(`
+      <h2>✅ Bling autorizado com sucesso!</h2>
+      <p>Os tokens foram salvos. <a href="/">← voltar para o sistema</a></p>
+    `);
   } catch (e) {
     res.status(500).send(`<h2>Erro:</h2><pre>${e.message}</pre>`);
   }
 });
 
-app.get('/bling/callback', async (req, res) => {
-  const { code, error } = req.query;
-  if (error) return res.send(`<h2>Erro na autorização: ${error}</h2><a href="/">voltar</a>`);
-  try {
-    await blingAuth.trocarCodigoPorToken(code);
-    res.send(`
-      <h2>✅ Bling autorizado com sucesso!</h2>
-      <p>Os tokens foram salvos. Você já pode fechar esta aba ou voltar pra tela inicial.</p>
-      <p><a href="/">← voltar para o sistema</a></p>
-    `);
-  } catch (e) {
-    res.status(500).send(`<h2>Erro ao trocar code por token:</h2><pre>${e.message}</pre>`);
-  }
-});
-
 // ------------------------------------------------------------
-// /api/pastas — lista pastas do Drive (rapido)
+// /api/pastas
 // ------------------------------------------------------------
 app.get('/api/pastas', async (req, res) => {
   try {
@@ -70,7 +63,6 @@ app.get('/api/pastas', async (req, res) => {
     if (!pastaMae) return res.status(500).json({ erro: 'DRIVE_FOLDER_ID nao configurado' });
 
     const subpastas = await drive.listarSubpastas(pastaMae);
-
     const resultados = await Promise.all(subpastas.map(async (sub) => {
       try {
         const arquivos = await drive.listarImagens(sub.id);
@@ -79,7 +71,6 @@ app.get('/api/pastas', async (req, res) => {
         return { sku: sub.name, pastaId: sub.id, qtdImagens: 0, erro: e.message };
       }
     }));
-
     resultados.sort((a, b) => a.sku.localeCompare(b.sku, 'pt-BR', { numeric: true, sensitivity: 'base' }));
     res.json({ total: resultados.length, pastas: resultados });
   } catch (e) {
@@ -88,7 +79,7 @@ app.get('/api/pastas', async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// /api/verificar-bling — verifica varios SKUs no Bling
+// /api/verificar-bling
 // ------------------------------------------------------------
 app.post('/api/verificar-bling', async (req, res) => {
   try {
@@ -97,9 +88,8 @@ app.post('/api/verificar-bling', async (req, res) => {
     if (!blingAuth.estaAutorizado()) return res.status(401).json({ erro: 'Bling nao autorizado' });
 
     const resultados = {};
-    const conc = 5;
-    for (let i = 0; i < skus.length; i += conc) {
-      const lote = skus.slice(i, i + conc);
+    for (let i = 0; i < skus.length; i += 5) {
+      const lote = skus.slice(i, i + 5);
       await Promise.all(lote.map(async (sku) => {
         try { resultados[sku] = await blingApi.buscarPorCodigo(sku); }
         catch (e) { resultados[sku] = { erro: e.message }; }
@@ -112,8 +102,7 @@ app.post('/api/verificar-bling', async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// /api/processar — Drive: torna publico + gera URLs LH3
-// Body: { items: [{ sku, pastaId }, ...] }
+// /api/processar
 // ------------------------------------------------------------
 app.post('/api/processar', async (req, res) => {
   try {
@@ -124,12 +113,9 @@ app.post('/api/processar', async (req, res) => {
     if (!drive.estaConfigurado()) return res.status(500).json({ erro: 'Drive nao configurado' });
 
     const resultados = {};
-
     for (const item of items) {
-      const r = await processarUm(item);
-      resultados[item.sku || '(sem nome)'] = r;
+      resultados[item.sku || '(sem nome)'] = await processarUm(item);
     }
-
     res.json({ resultados });
   } catch (e) {
     res.status(500).json({ erro: e.message });
@@ -149,9 +135,8 @@ async function processarUm({ sku, pastaId }) {
       return String(a.name).localeCompare(String(b.name), 'pt-BR');
     });
 
-    const conc = 3;
-    for (let i = 0; i < imagens.length; i += conc) {
-      const lote = imagens.slice(i, i + conc);
+    for (let i = 0; i < imagens.length; i += 3) {
+      const lote = imagens.slice(i, i + 3);
       await Promise.all(lote.map(async (img) => {
         try { await drive.tornarPublico(img.id); }
         catch (e) { console.log(`Aviso publicar ${img.name}: ${e.message}`); }
@@ -167,9 +152,7 @@ async function processarUm({ sku, pastaId }) {
 }
 
 // ------------------------------------------------------------
-// /api/enviar-bling — Bling: atualiza imagens do produto pelas URLs
-// Body: { items: [{ sku, urls: ['...', '...'] }, ...] }
-// SUBSTITUI imagens.externas; mantem imagens.internas intactas
+// /api/enviar-bling
 // ------------------------------------------------------------
 app.post('/api/enviar-bling', async (req, res) => {
   try {
@@ -180,7 +163,6 @@ app.post('/api/enviar-bling', async (req, res) => {
     if (!blingAuth.estaAutorizado()) return res.status(401).json({ erro: 'Bling nao autorizado' });
 
     const resultados = {};
-    // SKUs em serie pra nao bater rate limit do Bling no PUT (que e mais pesado)
     for (const it of items) {
       resultados[it.sku] = await enviarUm(it);
     }
@@ -192,19 +174,18 @@ app.post('/api/enviar-bling', async (req, res) => {
 
 async function enviarUm({ sku, urls }) {
   if (!sku) return { erro: 'sku faltando' };
-  if (!Array.isArray(urls) || urls.length === 0) return { erro: 'urls vazias — processe primeiro' };
+  if (!Array.isArray(urls) || urls.length === 0) return { erro: 'urls vazias - processe primeiro' };
   try {
-    // 1) Acha produto pelo codigo
     const produto = await blingApi.buscarPorCodigo(sku);
     if (!produto.encontrado) return { erro: 'produto nao encontrado no Bling' };
 
-    // 2) Atualiza imagens
     const r = await blingApi.atualizarImagens(produto.id, urls);
     return {
       ok: true,
       idProduto: produto.id,
       nomeProduto: produto.nome,
       qtdEnviadas: r.qtdExternas,
+      qtdConfirmadas: r.qtdExternasConfirmadas,
       qtdInternasMantidas: r.qtdInternasMantidas,
       enviadoEm: new Date().toISOString()
     };
@@ -214,8 +195,7 @@ async function enviarUm({ sku, urls }) {
 }
 
 // ------------------------------------------------------------
-// /api/processar-e-enviar — TUDO: Drive (publica/URLs) + Bling (atualiza)
-// Body: { items: [{ sku, pastaId }, ...] }
+// /api/processar-e-enviar (Tudo direto)
 // ------------------------------------------------------------
 app.post('/api/processar-e-enviar', async (req, res) => {
   try {
@@ -227,10 +207,8 @@ app.post('/api/processar-e-enviar', async (req, res) => {
     if (!blingAuth.estaAutorizado()) return res.status(401).json({ erro: 'Bling nao autorizado' });
 
     const resultados = {};
-
     for (const item of items) {
       try {
-        // 1) Processa (Drive)
         const proc = await processarUm(item);
         if (proc.erro) {
           resultados[item.sku] = { etapa: 'processar', erro: proc.erro };
@@ -240,8 +218,6 @@ app.post('/api/processar-e-enviar', async (req, res) => {
           resultados[item.sku] = { etapa: 'processar', erro: proc.aviso || 'sem URLs geradas' };
           continue;
         }
-
-        // 2) Envia (Bling)
         const env = await enviarUm({ sku: item.sku, urls: proc.urls });
         resultados[item.sku] = {
           processamento: { qtd: proc.qtd, urls: proc.urls, nomes: proc.nomes, urlsConcatenadas: proc.urlsConcatenadas },
@@ -251,8 +227,31 @@ app.post('/api/processar-e-enviar', async (req, res) => {
         resultados[item.sku] = { erro: e.message };
       }
     }
-
     res.json({ resultados });
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+// ------------------------------------------------------------
+// /api/debug-produto/:codigo - util pra debug
+// Retorna dados completos do produto pelo SKU
+// ------------------------------------------------------------
+app.get('/api/debug-produto/:codigo', async (req, res) => {
+  try {
+    if (!blingAuth.estaAutorizado()) return res.status(401).json({ erro: 'Bling nao autorizado' });
+    const codigo = req.params.codigo;
+    const resumo = await blingApi.buscarPorCodigo(codigo);
+    if (!resumo.encontrado) return res.json({ encontrado: false });
+    const completo = await blingApi.buscarProdutoCompleto(resumo.id);
+    res.json({
+      encontrado: true,
+      id: resumo.id,
+      codigo: resumo.codigo,
+      nome: resumo.nome,
+      imagens: completo ? completo.imagens : null,
+      camposDoProduto: completo ? Object.keys(completo) : []
+    });
   } catch (e) {
     res.status(500).json({ erro: e.message });
   }
