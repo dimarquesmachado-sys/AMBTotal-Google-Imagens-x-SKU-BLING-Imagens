@@ -121,11 +121,28 @@ async function atualizarImagens(idProduto, urls) {
   // 2) Body MINIMAL - APENAS midia.imagens.externa
   // ATENCAO: Bling usa SINGULAR "externa" no PUT/PATCH (e nao "externas" plural!)
   // Descoberta via DevTools comparando com a request da UI do Bling.
+  //
+  // ESTRATEGIA DE SUBSTITUICAO POSICIONAL:
+  // O Bling faz "merge por posicao" - se mandamos 6 URLs e o produto tem 12,
+  // ele sobrescreve as posicoes 1-6 e mantem as 7-12. Bug nao-documentado.
+  // Tambem ignora "externa: []" silenciosamente.
+  // Solucao: fazer padding com strings vazias ate atingir o tamanho atual.
+  // Isso forca o Bling a sobrescrever TODAS as posicoes. As strings vazias
+  // sao automaticamente descartadas pelo Bling (URL invalida).
   const externasNovas = (urls || []).map(link => ({ link }));
+  const tamanhoAtual = externasAntes.length;
+  const externasComPadding = [...externasNovas];
+  while (externasComPadding.length < tamanhoAtual) {
+    externasComPadding.push({ link: '' });
+  }
+  if (externasComPadding.length > externasNovas.length) {
+    console.log(`[Bling] Padding aplicado: ${externasNovas.length} URLs reais + ${externasComPadding.length - externasNovas.length} vazias = ${externasComPadding.length} total (para sobrescrever as ${tamanhoAtual} existentes)`);
+  }
+
   const bodyPatch = {
     midia: {
       imagens: {
-        externa: externasNovas  // SINGULAR - bug/inconsistencia da API do Bling
+        externa: externasComPadding  // SINGULAR - bug/inconsistencia da API do Bling
       }
     }
   };
@@ -146,27 +163,12 @@ async function atualizarImagens(idProduto, urls) {
     console.log(`[Bling] Produto KIT detectado (formato=E). Preservando estrutura com ${bodyPatch.estrutura.componentes.length} componentes.`);
   }
 
-  // 3) Faz PATCH em 2 etapas para garantir SUBSTITUICAO real
-  // (Bling faz "merge" se mandar array com itens direto, entao primeiro
-  // limpamos com array vazio, e depois adicionamos as novas URLs)
+  console.log(`[Bling] PATCH body keys: ${Object.keys(bodyPatch).join(', ')}`);
+  console.log(`[Bling] PATCH body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
 
-  // Etapa 3.1: PATCH com externa vazio (limpa tudo)
-  const bodyLimpar = JSON.parse(JSON.stringify(bodyPatch));
-  bodyLimpar.midia.imagens.externa = [];
-  console.log(`[Bling] PATCH 1/2 (limpar): externa=[]`);
-  const resLimpar = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyLimpar);
-  console.log(`[Bling] PATCH 1/2 retorno:`, resLimpar === null ? 'null' : JSON.stringify(resLimpar).slice(0, 200));
-
-  // delay entre os 2 PATCH para nao estourar 3 req/s
-  await new Promise(r => setTimeout(r, 400));
-
-  // Etapa 3.2: PATCH com as URLs novas
-  console.log(`[Bling] PATCH 2/2 (adicionar): externa=[${externasNovas.length} URLs]`);
-  console.log(`[Bling] PATCH 2/2 body keys: ${Object.keys(bodyPatch).join(', ')}`);
-  console.log(`[Bling] PATCH 2/2 body.midia:`, JSON.stringify(bodyPatch.midia).slice(0, 500));
-
+  // 3) Faz PATCH unico com padding
   const resultadoPatch = await chamarBling('PATCH', `/produtos/${idProduto}`, bodyPatch);
-  console.log(`[Bling] PATCH 2/2 retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
+  console.log(`[Bling] PATCH retorno:`, resultadoPatch === null ? 'null' : JSON.stringify(resultadoPatch).slice(0, 300));
 
   // delay antes da verificacao
   await new Promise(r => setTimeout(r, 400));
@@ -184,8 +186,9 @@ async function atualizarImagens(idProduto, urls) {
 
   if (externasDepois.length !== urls.length) {
     throw new Error(
-      `Bling aceitou o PATCH MINIMAL mas nao atualizou as imagens. ` +
-      `Esperado: ${urls.length} externas, atual: ${externasDepois.length}.`
+      `Bling aceitou o PATCH MINIMAL mas nao atualizou as imagens corretamente. ` +
+      `Esperado: ${urls.length} externas, atual: ${externasDepois.length}. ` +
+      `(Pode ser necessario excluir manualmente as imagens extras no Bling)`
     );
   }
 
