@@ -135,18 +135,30 @@ app.post('/api/processar', async (req, res) => {
   }
 });
 
+// Limite máximo de imagens externas suportado pelo Bling
+const MAX_IMAGENS_BLING = 12;
+
 async function processarUm({ sku, pastaId }) {
   if (!sku || !pastaId) return { erro: 'sku ou pastaId faltando' };
   try {
-    const imagens = await drive.listarImagens(pastaId);
-    if (imagens.length === 0) return { qtd: 0, urls: [], aviso: 'pasta sem imagens' };
+    const imagensTodas = await drive.listarImagens(pastaId);
+    if (imagensTodas.length === 0) return { qtd: 0, urls: [], aviso: 'pasta sem imagens' };
 
-    imagens.sort((a, b) => {
+    imagensTodas.sort((a, b) => {
       const na = extrairNumero(a.name);
       const nb = extrairNumero(b.name);
       if (na !== nb) return na - nb;
       return String(a.name).localeCompare(String(b.name), 'pt-BR');
     });
+
+    // Aplica limite de 12 imagens (Bling so aceita ate 12 imagens externas)
+    const qtdTotal = imagensTodas.length;
+    const imagens = imagensTodas.slice(0, MAX_IMAGENS_BLING);
+    let aviso = null;
+    if (qtdTotal > MAX_IMAGENS_BLING) {
+      aviso = `Pasta tem ${qtdTotal} imagens, limitado a ${MAX_IMAGENS_BLING} (Bling so aceita ate ${MAX_IMAGENS_BLING}). Imagens 13+ ignoradas.`;
+      console.log(`[AVISO] SKU ${sku}: ${aviso}`);
+    }
 
     for (let i = 0; i < imagens.length; i += 3) {
       const lote = imagens.slice(i, i + 3);
@@ -158,7 +170,9 @@ async function processarUm({ sku, pastaId }) {
 
     const urls = imagens.map(img => `https://lh3.googleusercontent.com/d/${img.id}`);
     const nomes = imagens.map(img => img.name);
-    return { qtd: imagens.length, urls, nomes, urlsConcatenadas: urls.join('|') };
+    const ret = { qtd: imagens.length, qtdTotal, urls, nomes, urlsConcatenadas: urls.join('|') };
+    if (aviso) ret.aviso = aviso;
+    return ret;
   } catch (e) {
     return { erro: e.message };
   }
